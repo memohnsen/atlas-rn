@@ -41,3 +41,10 @@ app-example
 # generated native folders
 /ios
 /android
+
+bun.lock
+package-lock.json
+
+# logs
+logs/
+bun.lock

@@ -1,98 +1,178 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
+// BOTTOM SHEET EXAMPLE
 
-import { HelloWave } from '@/components/hello-wave';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Link } from 'expo-router';
+import Ionicons from '@expo/vector-icons/Ionicons';
+import { Avatar, BottomSheet, Button, Card, Dialog, Skeleton, Toast, useToast } from 'heroui-native';
+import { useState } from 'react';
+import { Image, ScrollView, Text, View } from 'react-native';
+import { withUniwind } from 'uniwind';
 
-export default function HomeScreen() {
+const StyledIonicons = withUniwind(Ionicons);
+
+export default function BottomSheetExample() {
+  const [isOpen, setIsOpen] = useState(false);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const { toast } = useToast();
+
+
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <Link href="/modal">
-          <Link.Trigger>
-            <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-          </Link.Trigger>
-          <Link.Preview />
-          <Link.Menu>
-            <Link.MenuAction title="Action" icon="cube" onPress={() => alert('Action pressed')} />
-            <Link.MenuAction
-              title="Share"
-              icon="square.and.arrow.up"
-              onPress={() => alert('Share pressed')}
-            />
-            <Link.Menu title="More" icon="ellipsis">
-              <Link.MenuAction
-                title="Delete"
-                icon="trash"
-                destructive
-                onPress={() => alert('Delete pressed')}
-              />
-            </Link.Menu>
-          </Link.Menu>
-        </Link>
+    <ScrollView className='mt-12'>
+      <BottomSheet isOpen={isOpen} onOpenChange={setIsOpen}>
+        <BottomSheet.Trigger asChild>
+          <Button variant="primary">Open Bottom Sheet</Button>
+        </BottomSheet.Trigger>
+        <BottomSheet.Portal>
+          <BottomSheet.Overlay />
+          <BottomSheet.Content>
+            <View className="items-center mb-5">
+              <View className="size-20 items-center justify-center rounded-full bg-green-500/10">
+                <StyledIonicons
+                  name="shield-checkmark"
+                  size={40}
+                  className="text-green-500"
+                />
+              </View>
+            </View>
+            <View className="mb-8 gap-2 items-center">
+              <BottomSheet.Title className="text-center">
+                Keep yourself safe
+              </BottomSheet.Title>
+              <BottomSheet.Description className="text-center">
+                Update your software to the latest version for better security and
+                performance.
+              </BottomSheet.Description>
+            </View>
+            <View className="gap-3">
+              <Button onPress={() => setIsOpen(false)}>Update Now</Button>
+              <Button variant="tertiary" onPress={() => setIsOpen(false)}>
+                Later
+              </Button>
+            </View>
+          </BottomSheet.Content>
+        </BottomSheet.Portal>
+      </BottomSheet>
 
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+      <Dialog isOpen={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <Dialog.Trigger asChild>
+          <Button variant="primary" className="mt-10">Open Dialog</Button>
+        </Dialog.Trigger>
+        <Dialog.Portal>
+          <Dialog.Overlay />
+          <Dialog.Content>
+            <Dialog.Close />
+            <View className="mb-5 gap-1.5">
+              <Dialog.Title>Confirm Action</Dialog.Title>
+              <Dialog.Description>
+                Are you sure you want to proceed with this action? This cannot be
+                undone.
+              </Dialog.Description>
+            </View>
+            <View className="flex-row justify-end gap-3">
+              <Dialog.Close asChild>
+                <Button variant="ghost" size="sm">
+                  Cancel
+                </Button>
+              </Dialog.Close>
+              <Button size="sm">Confirm</Button>
+            </View>
+          </Dialog.Content>
+        </Dialog.Portal>
+      </Dialog>
+
+      <Button
+       className="mt-10"
+        onPress={() =>
+          toast.show({
+            variant: 'success',
+            label: 'You have upgraded your plan',
+            description: 'You can continue using HeroUI Chat',
+            actionLabel: 'Close',
+            onActionPress: ({ hide }) => hide(),
+          })
+        }
+      >
+        Show Success Toast
+      </Button>
+      <Button
+       className="mt-10"
+        onPress={() =>
+          toast.show({
+            component: (props) => (
+              <Toast variant="accent" {...props}>
+                <Toast.Title>Custom Toast</Toast.Title>
+                <Toast.Description>
+                  This uses a custom component
+                </Toast.Description>
+                <Toast.Action onPress={() => props.hide()}>Undo</Toast.Action>
+                <Toast.Close className="absolute top-0 right-0" />
+              </Toast>
+            ),
+          })
+        }
+      >
+        Show Custom Toast
+      </Button>
+
+
+      <Card className="p-4 mt-10">
+        <View className="flex-row items-center gap-3 mb-4">
+          <Skeleton isLoading={isLoading} className="h-10 w-10 rounded-full">
+            <Avatar size="sm" alt="Avatar">
+              <Avatar.Image source={{ uri: 'https://i.pravatar.cc/150?img=4' }} />
+              <Avatar.Fallback />
+            </Avatar>
+          </Skeleton>
+          <View className="flex-1 gap-1">
+            <Skeleton isLoading={isLoading} className="h-3 w-32 rounded-md">
+              <Text className="font-semibold text-foreground">John Doe</Text>
+            </Skeleton>
+            <Skeleton isLoading={isLoading} className="h-3 w-24 rounded-md">
+              <Text className="text-sm text-muted">@johndoe</Text>
+            </Skeleton>
+          </View>
+        </View>
+        <Skeleton
+          isLoading={isLoading}
+          className="h-48 w-full rounded-lg"
+          animation={{
+            shimmer: {
+              duration: 1500,
+              speed: 1,
+            },
+          }}
+        >
+          <View className="h-48 bg-surface-tertiary rounded-lg overflow-hidden">
+            <Image
+              source={{
+                uri: 'https://heroui-assets.nyc3.cdn.digitaloceanspaces.com/backgrounds/cards/car1.jpg',
+              }}
+              className="h-full w-full"
+            />
+          </View>
+        </Skeleton>
+      </Card>
+
+      <Card className='mt-10'>
+        <View className="gap-4">
+          <Card.Body className="mb-4">
+            <View className="gap-1 mb-2">
+              <Card.Title className="text-pink-500">$450</Card.Title>
+              <Card.Title>Living room Sofa • Collection 2025</Card.Title>
+            </View>
+            <Card.Description>
+              This sofa is perfect for modern tropical spaces, baroque inspired
+              spaces.
+            </Card.Description>
+          </Card.Body>
+          <Card.Footer className="gap-3">
+            <Button variant="primary">Buy now</Button>
+            <Button variant="ghost">
+              <Button.Label>Add to cart</Button.Label>
+              <Ionicons name="bag-outline" size={16} />
+            </Button>
+          </Card.Footer>
+        </View>
+      </Card>
+    </ScrollView>
   );
 }
-
-const styles = StyleSheet.create({
-  titleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
-  },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
-  },
-});
