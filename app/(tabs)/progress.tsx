@@ -24,13 +24,13 @@ const Progress = () => {
       </View>
 
       <ProgressCard exerciseName="Snatch" recentBest={120} pr={116}/>
+      <ProgressCard exerciseName="Clean" recentBest={120} pr={116}/>
+      <ProgressCard exerciseName="Jerk" recentBest={120} pr={116}/>
       <ProgressCard exerciseName="Clean and Jerk" recentBest={120} pr={116}/>
-      <ProgressCard exerciseName="Deadlift" recentBest={120} pr={116}/>
-      <ProgressCard exerciseName="Bench Press" recentBest={120} pr={116}/>
-      <ProgressCard exerciseName="Squat" recentBest={120} pr={116}/>
-      <ProgressCard exerciseName="Overhead Press" recentBest={120} pr={116}/>
-      <ProgressCard exerciseName="Pull-Ups" recentBest={120} pr={116}/>
-      <ProgressCard exerciseName="Push-Ups" recentBest={120} pr={116}/>
+      <ProgressCard exerciseName="Back Squat" recentBest={120} pr={116}/>
+      <ProgressCard exerciseName="Front Squat" recentBest={120} pr={116}/>
+
+      <Text className='mt-2'></Text>
     </ScrollView>
   )
 }
