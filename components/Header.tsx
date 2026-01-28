@@ -9,7 +9,7 @@ interface HeaderProps {
 const Header = ({title, subtitle}: HeaderProps) => {
   return (
     <>
-        <Text className='mt-6 text-text-title font-bold text-4xl'>{title}</Text>
+        <Text className='text-text-title font-bold text-4xl'>{title}</Text>
         <Text className='text-gray-500 text-lg mt-2'>{subtitle}</Text>
     </>
   )

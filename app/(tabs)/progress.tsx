@@ -2,11 +2,11 @@ import Header from '@/components/Header'
 import ProgressCard from '@/components/ProgressCard'
 import { Chip } from 'heroui-native'
 import React from 'react'
-import { ScrollView, Text, View } from 'react-native'
+import { ScrollView, View } from 'react-native'
 
 const Progress = () => {
   return (
-    <ScrollView className='flex-1 p-5 bg-background'>
+    <ScrollView className='flex-1 p-5 bg-background' contentContainerStyle={{ paddingTop: 30, paddingBottom: 20 }}>
       <Header title="Lifting Progress" subtitle="Track your personal records" />
 
       <View className='flex-row gap-2 mt-6'>
@@ -27,8 +27,6 @@ const Progress = () => {
       <ProgressCard exerciseName="Clean and Jerk" recentBest={120} pr={116}/>
       <ProgressCard exerciseName="Back Squat" recentBest={120} pr={116}/>
       <ProgressCard exerciseName="Front Squat" recentBest={120} pr={116}/>
-
-      <Text className='mt-2'></Text>
     </ScrollView>
   )
 }
