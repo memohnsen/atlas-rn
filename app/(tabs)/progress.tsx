@@ -1,15 +1,13 @@
+import Header from '@/components/Header'
 import ProgressCard from '@/components/ProgressCard'
-import { useColors } from '@/constants/colors'
 import { Chip } from 'heroui-native'
 import React from 'react'
 import { ScrollView, Text, View } from 'react-native'
 
 const Progress = () => {
-  const colors = useColors()
   return (
     <ScrollView className='flex-1 p-5 bg-background'>
-      <Text className='mt-20 text-text-title font-bold text-4xl'>Lifting Progress</Text>
-      <Text className='text-gray-500 text-lg mt-2'>Track your personal records</Text>
+      <Header title="Lifting Progress" subtitle="Track your personal records" />
 
       <View className='flex-row gap-2 mt-6'>
         <Chip variant="primary" size="lg" className='h-8'>
