@@ -2,7 +2,8 @@
 
 import { useEffect, useMemo, useState } from 'react'
 
-import { AthleteScheduleSummary, getAthleteScheduleSummaries } from '@/lib/supabase-queries'
+import type { AthleteScheduleSummary } from '@/lib/supabase-queries'
+import { getAthleteScheduleSummaries } from '@/lib/supabase-queries'
 
 type ScheduleState = {
   data: AthleteScheduleSummary[]
