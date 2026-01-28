@@ -16,7 +16,7 @@ import {
 } from 'recharts'
 import { WorkoutRecord } from '@/types/workout'
 import { getAthletes, getProgramsForAthlete, getWorkoutsForAthlete, getWorkoutsForAthleteProgram } from '@/lib/supabase-queries'
-import { buildExerciseVolumeData, buildWeeklyIntensityData, buildWeeklyRepData } from '@/lib/analytics-helpers'
+import { buildExerciseVolumeData, buildWeeklyIntensityData, buildWeeklyRepData, formatNumber } from '@/lib/analytics-helpers'
 import { parseCount } from '@/lib/value-parse'
 
 type ProgramOption = {
