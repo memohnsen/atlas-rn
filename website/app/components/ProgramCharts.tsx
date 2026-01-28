@@ -83,7 +83,11 @@ export default function ProgramCharts({ data }: ProgramChartsProps) {
               <Tooltip
                 contentStyle={{ backgroundColor: '#fff', border: '1px solid #ddd', borderRadius: '4px' }}
                 labelStyle={{ fontWeight: 'bold', color: '#333' }}
-                formatter={(value: number) => [`${value.toFixed(1)}%`, 'Avg Intensity']}
+                formatter={(value) => {
+                  const numericValue = typeof value === 'number' ? value : Number(value ?? 0)
+                  const formatted = Number.isFinite(numericValue) ? `${numericValue.toFixed(1)}%` : '—'
+                  return [formatted, 'Avg Intensity']
+                }}
               />
               <Legend />
               <Line
