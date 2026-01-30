@@ -3,11 +3,14 @@ import HistoryCard from '@/components/HistoryCard'
 import { Chip } from 'heroui-native'
 import React from 'react'
 import { ScrollView, StyleSheet, View } from 'react-native'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 
 const History = () => {
+  const insets = useSafeAreaInsets()
+
   return (
-    <ScrollView className='flex-1 p-5 bg-background' contentContainerStyle={{ paddingTop: 30, paddingBottom: 20 }}>
+    <ScrollView className='flex-1 p-5 bg-background'  contentContainerStyle={{ paddingBottom: 20 }} style={{ paddingTop: insets.top}}>
       <Header title="Training History" subtitle="4 workouts completed" />
 
       <View className='flex-row gap-2 mt-6'>
