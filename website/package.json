@@ -15,7 +15,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@supabase/supabase-js": "^2.83.0",
+    "convex": "^1.16.0",
     "next": "16.0.10",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
