@@ -157,20 +157,27 @@ export const deleteTemplate = mutation({
 // Assign template to an athlete (creates a new program from template)
 export const assignTemplateToAthlete = mutation({
   args: {
-    templateId: v.id("programTemplates"),
+    userId: v.string(),
+    templateName: v.string(),
     athleteName: v.string(),
-    programName: v.optional(v.string()), // Optional custom program name
+    programName: v.string(),
     startDate: v.string(),
   },
   handler: async (ctx, args) => {
-    const template = await ctx.db.get(args.templateId);
+    const template = await ctx.db
+      .query("programTemplates")
+      .withIndex("by_user_program", (q) =>
+        q.eq("userId", args.userId).eq("programName", args.templateName)
+      )
+      .first();
+
     if (!template) throw new Error("Template not found");
 
     // Create program instance from template with completion tracking
     const programId = await ctx.db.insert("programs", {
-      userId: template.userId,
+      userId: args.userId,
       athleteName: args.athleteName,
-      programName: args.programName || template.programName,
+      programName: args.programName,
       startDate: args.startDate,
       weekCount: template.weekCount,
       repTargets: template.repTargets,

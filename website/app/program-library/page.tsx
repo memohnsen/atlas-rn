@@ -1,56 +1,37 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import Link from 'next/link'
-import {
-  assignLibraryProgramToAthlete,
-  checkProgramExists,
-  getLibraryPrograms,
-  LibraryProgramSummary
-} from '@/lib/supabase-queries'
+import { useQuery, useMutation, useConvex } from 'convex/react'
+import { api } from '@/convex/_generated/api'
 import { formatDate } from '@/lib/date-format'
 import { AssignmentState, getAssignment, updateAssignmentState } from '@/lib/program-library-assignments'
 
+const USER_ID = 'default-user'
+
+type LibraryProgramSummary = {
+  program_name: string
+  created_at?: string
+}
+
 export default function ProgramLibraryPage() {
-  const [programs, setPrograms] = useState<LibraryProgramSummary[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const convex = useConvex()
+  const templates = useQuery(api.programTemplates.getTemplates) ?? []
+  const assignTemplate = useMutation(api.programTemplates.assignTemplateToAthlete)
   const [assignments, setAssignments] = useState<Record<string, AssignmentState>>({})
+
+  const programs: LibraryProgramSummary[] = useMemo(
+    () => templates.map(t => ({ program_name: t.programName, created_at: t._creationTime ? new Date(t._creationTime).toISOString() : undefined })),
+    [templates]
+  )
 
   const sortedPrograms = useMemo(
     () => [...programs].sort((a, b) => a.program_name.localeCompare(b.program_name)),
     [programs]
   )
 
-  useEffect(() => {
-    let mounted = true
-
-    const loadPrograms = async () => {
-      setLoading(true)
-      setError(null)
-      try {
-        const data = await getLibraryPrograms()
-        if (mounted) {
-          setPrograms(data)
-        }
-      } catch (err) {
-        const message = (err as Error)?.message || String(err)
-        if (mounted) {
-          setError(message)
-        }
-      } finally {
-        if (mounted) {
-          setLoading(false)
-        }
-      }
-    }
-
-    loadPrograms()
-
-    return () => {
-      mounted = false
-    }
-  }, [])
+  const loading = templates === undefined
+  const error = null
 
   const updateAssignment = (programName: string, updates: Partial<AssignmentState>) => {
     setAssignments((prev) => updateAssignmentState(prev, programName, updates))
@@ -76,7 +57,13 @@ export default function ProgramLibraryPage() {
     updateAssignment(libraryProgramName, { status: 'assigning', message: undefined })
 
     try {
-      const exists = await checkProgramExists(normalizedAthlete, normalizedProgram)
+      const exists = await convex.query(api.programs.checkProgramExists, {
+        userId: USER_ID,
+        athleteName: normalizedAthlete,
+        programName: normalizedProgram,
+        startDate: trimmedDate
+      })
+
       if (exists) {
         updateAssignment(libraryProgramName, {
           status: 'error',
@@ -85,12 +72,13 @@ export default function ProgramLibraryPage() {
         return
       }
 
-      await assignLibraryProgramToAthlete(
-        libraryProgramName,
-        normalizedAthlete,
-        normalizedProgram,
-        trimmedDate
-      )
+      await assignTemplate({
+        userId: USER_ID,
+        templateName: libraryProgramName,
+        athleteName: normalizedAthlete,
+        programName: normalizedProgram,
+        startDate: trimmedDate
+      })
 
       updateAssignment(libraryProgramName, {
         status: 'success',
@@ -100,9 +88,7 @@ export default function ProgramLibraryPage() {
       const message = (err as Error)?.message || String(err)
       updateAssignment(libraryProgramName, {
         status: 'error',
-        message: message.includes('SUPABASE')
-          ? 'Supabase is not configured. Please add NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY to your .env.local file.'
-          : 'Failed to assign program: ' + message
+        message: 'Failed to assign program: ' + message
       })
     }
   }

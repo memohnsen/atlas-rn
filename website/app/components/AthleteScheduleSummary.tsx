@@ -1,14 +1,15 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo } from 'react'
+import { useQuery } from 'convex/react'
+import { api } from '@/convex/_generated/api'
 
-import type { AthleteScheduleSummary } from '@/lib/supabase-queries'
-import { getAthleteScheduleSummaries } from '@/lib/supabase-queries'
+const USER_ID = 'default-user'
 
-type ScheduleState = {
-  data: AthleteScheduleSummary[]
-  error: string | null
-  loading: boolean
+type AthleteScheduleSummary = {
+  athlete_name: string
+  last_session_date: string | null
+  days_remaining: number | null
 }
 
 function formatDate(value: string | null) {
@@ -29,49 +30,30 @@ function formatDate(value: string | null) {
 }
 
 export default function AthleteScheduleSummary() {
-  const [state, setState] = useState<ScheduleState>({
-    data: [],
-    error: null,
-    loading: true
-  })
+  const summaries = useQuery(api.programs.getAthleteScheduleSummaries, { userId: USER_ID })
 
-  useEffect(() => {
-    let isMounted = true
-    async function load() {
-      try {
-        const data = await getAthleteScheduleSummaries()
-        if (isMounted) {
-          setState({ data, error: null, loading: false })
-        }
-      } catch (err) {
-        console.error('Failed to load athlete schedules:', err)
-        if (isMounted) {
-          setState({
-            data: [],
-            error: 'Unable to load athlete schedules right now.',
-            loading: false
-          })
-        }
-      }
-    }
+  const data: AthleteScheduleSummary[] = useMemo(() => {
+    if (!summaries) return []
+    return summaries.map(s => ({
+      athlete_name: s.athleteName,
+      last_session_date: s.lastScheduledDate,
+      days_remaining: s.daysRemaining
+    }))
+  }, [summaries])
 
-    load()
-
-    return () => {
-      isMounted = false
-    }
-  }, [])
+  const loading = summaries === undefined
+  const error = null
 
   const content = useMemo(() => {
-    if (state.loading) {
+    if (loading) {
       return <p className="home-section-muted">Loading athlete schedules...</p>
     }
 
-    if (state.error) {
-      return <p className="home-section-error">{state.error}</p>
+    if (error) {
+      return <p className="home-section-error">{error}</p>
     }
 
-    if (state.data.length === 0) {
+    if (data.length === 0) {
       return <p className="home-section-muted">No athlete schedules found yet.</p>
     }
 
@@ -86,7 +68,7 @@ export default function AthleteScheduleSummary() {
             </tr>
           </thead>
           <tbody>
-            {state.data.map((summary) => (
+            {data.map((summary) => (
               <tr key={summary.athlete_name}>
                 <td>{summary.athlete_name}</td>
                 <td>{formatDate(summary.last_session_date)}</td>
@@ -97,7 +79,7 @@ export default function AthleteScheduleSummary() {
         </table>
       </div>
     )
-  }, [state])
+  }, [loading, error, data])
 
   return (
     <section className="home-section">

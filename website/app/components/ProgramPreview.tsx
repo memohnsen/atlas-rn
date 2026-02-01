@@ -1,8 +1,16 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { ExerciseLibraryEntry, searchExerciseLibrary } from '@/lib/supabase-queries'
+import { useConvex } from 'convex/react'
+import { api } from '@/convex/_generated/api'
 import { GeneratedProgramWeek, ProgramBuilderExercise, RepTargets, WeekTotalReps } from '@/types/workout'
+
+type ExerciseLibraryEntry = {
+  name: string
+  primary?: string
+  secondary?: string
+  link?: string
+}
 
 type ProgramPreviewProps = {
   weeks: GeneratedProgramWeek[]
@@ -35,6 +43,7 @@ export default function ProgramPreview({
   repTargets,
   weekTotals
 }: ProgramPreviewProps) {
+  const convex = useConvex()
   const [editingKey, setEditingKey] = useState<string | null>(null)
   const [editingValue, setEditingValue] = useState('')
   const [exerciseSuggestions, setExerciseSuggestions] = useState<ExerciseLibraryEntry[]>([])
@@ -277,24 +286,27 @@ export default function ProgramPreview({
     setIsSearchingExercises(true)
     const searchId = latestSearchRef.current + 1
     latestSearchRef.current = searchId
-    searchTimeoutRef.current = setTimeout(() => {
-      searchExerciseLibrary(trimmed)
-        .then((results) => {
-          if (latestSearchRef.current === searchId) {
-            setExerciseSuggestions(results)
-          }
-        })
-        .catch((error) => {
-          console.error('Error searching exercise library:', error)
-          if (latestSearchRef.current === searchId) {
-            setExerciseSuggestions([])
-          }
-        })
-        .finally(() => {
-          if (latestSearchRef.current === searchId) {
-            setIsSearchingExercises(false)
-          }
-        })
+    searchTimeoutRef.current = setTimeout(async () => {
+      try {
+        const results = await convex.query(api.exerciseLibrary.searchExercises, { query: trimmed })
+        if (latestSearchRef.current === searchId) {
+          setExerciseSuggestions(results.map(r => ({
+            name: r.name,
+            primary: r.primary,
+            secondary: r.secondary,
+            link: r.link
+          })))
+        }
+      } catch (error) {
+        console.error('Error searching exercise library:', error)
+        if (latestSearchRef.current === searchId) {
+          setExerciseSuggestions([])
+        }
+      } finally {
+        if (latestSearchRef.current === searchId) {
+          setIsSearchingExercises(false)
+        }
+      }
     }, 300)
 
     return () => {

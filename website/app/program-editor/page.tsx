@@ -16,13 +16,11 @@ import { formatDate } from '@/lib/date-format'
 import { buildBuilderStateFromWorkouts } from '@/lib/program-editor-helpers'
 import { parseCount, parseIntensityValues } from '@/lib/value-parse'
 import { createExercise } from '@/lib/program-builder-defaults'
-import {
-  deleteProgram,
-  getAthletes,
-  getProgramsForAthlete,
-  getWorkoutsForAthleteProgram,
-  insertManyWorkouts
-} from '@/lib/supabase-queries'
+import { useQuery, useMutation } from 'convex/react'
+import { api } from '@/convex/_generated/api'
+import { Id } from '@/convex/_generated/dataModel'
+
+const USER_ID = 'default-user'
 
 type ProgramOption = {
   program_name: string
@@ -30,8 +28,7 @@ type ProgramOption = {
 }
 
 export default function ProgramEditorPage() {
-  const [athletes, setAthletes] = useState<string[]>([])
-  const [programs, setPrograms] = useState<ProgramOption[]>([])
+  const athletes = useQuery(api.programs.getAthletes, { userId: USER_ID }) ?? []
   const [selectedAthlete, setSelectedAthlete] = useState('')
   const [selectedProgram, setSelectedProgram] = useState<ProgramOption | null>(null)
   const [seedDays, setSeedDays] = useState<ProgramBuilderDay[]>([])
@@ -46,12 +43,30 @@ export default function ProgramEditorPage() {
   })
   const [weekTotals, setWeekTotals] = useState<WeekTotalReps[]>([])
   const [builderSeed, setBuilderSeed] = useState<string | null>(null)
-  const [loadingPrograms, setLoadingPrograms] = useState(false)
-  const [loadingWorkouts, setLoadingWorkouts] = useState(false)
   const [pushingToDatabase, setPushingToDatabase] = useState(false)
   const [pushSuccess, setPushSuccess] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const successTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const programs = useQuery(
+    api.programs.getProgramsForAthlete,
+    selectedAthlete ? { userId: USER_ID, athleteName: selectedAthlete } : 'skip'
+  ) ?? []
+
+  const selectedProgramData = useQuery(
+    api.programs.getAthleteProgram,
+    selectedAthlete && selectedProgram
+      ? {
+          userId: USER_ID,
+          athleteName: selectedAthlete,
+          programName: selectedProgram.program_name,
+          startDate: selectedProgram.start_date
+        }
+      : 'skip'
+  )
+
+  const updateProgram = useMutation(api.programs.updateProgram)
+  const deleteProgram = useMutation(api.programs.deleteProgram)
 
   const generatedProgram = useMemo(
     () => buildGeneratedProgramWeeks(builderDays, builderWeekCount),
@@ -85,46 +100,14 @@ export default function ProgramEditorPage() {
   }
 
   useEffect(() => {
-    const loadAthletes = async () => {
-      setError(null)
-      try {
-        const result = await getAthletes()
-        setAthletes(result)
-      } catch (err) {
-        console.error('Error loading athletes:', err)
-        setError('Failed to load athletes.')
-      }
-    }
-
-    loadAthletes()
-  }, [])
-
-  useEffect(() => {
     if (!selectedAthlete) {
-      setPrograms([])
       setSelectedProgram(null)
       return
     }
-
-    const loadPrograms = async () => {
-      setLoadingPrograms(true)
-      setError(null)
-      try {
-        const result = await getProgramsForAthlete(selectedAthlete)
-        setPrograms(result)
-      } catch (err) {
-        console.error('Error loading programs:', err)
-        setError('Failed to load programs.')
-      } finally {
-        setLoadingPrograms(false)
-      }
-    }
-
-    loadPrograms()
   }, [selectedAthlete])
 
   useEffect(() => {
-    if (!selectedAthlete || !selectedProgram) {
+    if (!selectedAthlete || !selectedProgram || !selectedProgramData) {
       setSeedDays([])
       setBuilderDays([])
       setBuilderWeekCount(4)
@@ -132,34 +115,44 @@ export default function ProgramEditorPage() {
       return
     }
 
-    const loadWorkouts = async () => {
-      setLoadingWorkouts(true)
-      setError(null)
-      setPushSuccess(false)
+    setPushSuccess(false)
 
-      try {
-        const data = await getWorkoutsForAthleteProgram(
-          selectedAthlete,
-          selectedProgram.program_name,
-          selectedProgram.start_date
-        )
-        const { days, weekCount } = buildBuilderStateFromWorkouts(data)
-        setSeedDays(days)
-        setBuilderDays(days)
-        setBuilderWeekCount(weekCount)
-        setBuilderSeed(`${selectedAthlete}-${selectedProgram.program_name}-${selectedProgram.start_date}`)
-      } catch (err) {
-        console.error('Error loading workouts:', err)
-        setError('Failed to load workouts.')
-        setSeedDays([])
-        setBuilderDays([])
-      } finally {
-        setLoadingWorkouts(false)
-      }
-    }
+    // Transform nested Convex data to flat WorkoutRecord for buildBuilderStateFromWorkouts
+    const flattenedWorkouts: WorkoutRecord[] = selectedProgramData.weeks.flatMap((week) =>
+      week.days.flatMap((day) =>
+        day.exercises.map((ex) => ({
+          id: '',
+          user_id: USER_ID,
+          athlete_name: selectedAthlete,
+          program_name: selectedProgram.program_name,
+          start_date: selectedProgram.start_date,
+          week_number: week.weekNumber,
+          day_number: day.dayNumber,
+          day_of_week: day.dayOfWeek ?? null,
+          exercise_number: ex.exerciseNumber,
+          exercise_name: ex.exerciseName,
+          exercise_category: ex.exerciseCategory ?? null,
+          exercise_notes: ex.exerciseNotes ?? null,
+          superset_group: ex.supersetGroup ?? null,
+          superset_order: ex.supersetOrder ?? null,
+          sets: ex.sets ?? null,
+          reps: ex.reps,
+          weights: ex.weights ?? null,
+          percent: ex.percent ?? null,
+          athlete_comments: ex.athleteComments ?? null,
+          completed: ex.completed,
+          created_at: '',
+          updated_at: ''
+        }))
+      )
+    )
 
-    loadWorkouts()
-  }, [selectedAthlete, selectedProgram])
+    const { days, weekCount } = buildBuilderStateFromWorkouts(flattenedWorkouts)
+    setSeedDays(days)
+    setBuilderDays(days)
+    setBuilderWeekCount(weekCount)
+    setBuilderSeed(`${selectedAthlete}-${selectedProgram.program_name}-${selectedProgram.start_date}`)
+  }, [selectedAthlete, selectedProgram, selectedProgramData])
 
   useEffect(() => {
     return () => {
@@ -169,59 +162,72 @@ export default function ProgramEditorPage() {
     }
   }, [])
 
-  const buildWorkoutRecords = (): Omit<WorkoutRecord, 'id' | 'created_at' | 'updated_at'>[] => {
-    if (!selectedProgram) {
-      return []
+  const buildConvexProgram = () => {
+    if (!selectedProgram || !selectedProgramData) {
+      return null
     }
+
     const athlete = selectedAthlete.trim().toLowerCase()
     const program = selectedProgram.program_name.trim().toLowerCase()
     const start = selectedProgram.start_date
 
-    return generatedProgram.flatMap((week) =>
-      week.days.flatMap((day) =>
-        day.exercises.flatMap((exercise, exerciseIndex) => {
-          const dayLabel = (day.dayLabel ?? day.dayOfWeek ?? '').trim()
-          const dayOfWeek = dayLabel ? dayLabel.toLowerCase() : null
+    // Transform generatedProgram to Convex nested structure
+    const weeks = generatedProgram.map((week) => ({
+      weekNumber: week.weekNumber,
+      days: week.days.map((day) => ({
+        dayNumber: day.dayNumber,
+        dayOfWeek: (day.dayLabel ?? day.dayOfWeek ?? '').trim().toLowerCase() || undefined,
+        dayLabel: (day.dayLabel ?? day.dayOfWeek ?? '').trim() || undefined,
+        completed: false,
+        exercises: day.exercises.map((exercise, exerciseIndex) => {
           const intensityValues = parseIntensityValues(exercise.intensity || '')
-          const parsedSets = Math.max(parseCount(exercise.sets || '') || 1, 1)
-          const setCount =
-            intensityValues.length > 0
-              ? Math.max(intensityValues.length, parsedSets)
-              : parsedSets
-          const supersetGroup = exercise.supersetGroup?.trim() || null
+          const supersetGroup = exercise.supersetGroup?.trim() || undefined
           const supersetOrder = supersetGroup
             ? Number.parseInt(exercise.supersetOrder || '', 10)
-            : null
-          const normalizedSupersetOrder = Number.isNaN(supersetOrder ?? NaN) ? null : supersetOrder
+            : undefined
+          const normalizedSupersetOrder = Number.isNaN(supersetOrder ?? NaN) ? undefined : supersetOrder
 
-          return Array.from({ length: setCount }, (_, setIndex) => ({
-            user_id: 'manual',
-            athlete_name: athlete,
-            program_name: program,
-            start_date: start,
-            week_number: week.weekNumber,
-            day_number: day.dayNumber,
-            day_of_week: dayOfWeek,
-            exercise_number: exerciseIndex + 1,
-            exercise_name: exercise.name || `Exercise ${exerciseIndex + 1}`,
-            exercise_category: exercise.category?.trim() || null,
-            exercise_notes: exercise.notes?.trim() || null,
-            superset_group: supersetGroup,
-            superset_order: normalizedSupersetOrder,
-            sets: setIndex + 1,
+          return {
+            exerciseNumber: exerciseIndex + 1,
+            exerciseName: exercise.name || `Exercise ${exerciseIndex + 1}`,
+            exerciseCategory: exercise.category?.trim() || undefined,
+            exerciseNotes: exercise.notes?.trim() || undefined,
+            supersetGroup,
+            supersetOrder: normalizedSupersetOrder,
+            sets: parseCount(exercise.sets || '') || undefined,
             reps: exercise.reps || '',
-            weights: null,
-            percent: intensityValues[setIndex] ?? intensityValues[intensityValues.length - 1] ?? null,
-            athlete_comments: null,
-            completed: false
-          }))
+            weights: undefined,
+            percent: intensityValues[0] ?? undefined,
+            completed: false,
+            athleteComments: undefined
+          }
         })
-      )
-    )
+      }))
+    }))
+
+    return {
+      userId: USER_ID,
+      athleteName: athlete,
+      programName: program,
+      startDate: start,
+      weekCount: generatedProgram.length,
+      repTargets: {
+        snatch: repTargets.snatch || '',
+        clean: repTargets.clean || '',
+        jerk: repTargets.jerk || '',
+        squat: repTargets.squat || '',
+        pull: repTargets.pull || ''
+      },
+      weekTotals: weekTotals.map(wt => ({
+        weekNumber: wt.weekNumber,
+        total: String(wt.total)
+      })),
+      weeks
+    }
   }
 
   const handlePushToDatabase = async () => {
-    if (!selectedProgram || !selectedAthlete) {
+    if (!selectedProgram || !selectedAthlete || !selectedProgramData) {
       setError('Please select an athlete and program first.')
       return
     }
@@ -242,14 +248,19 @@ export default function ProgramEditorPage() {
         setPushingToDatabase(false)
         return
       }
-      await deleteProgram(
-        selectedAthlete.trim().toLowerCase(),
-        selectedProgram.program_name.trim().toLowerCase(),
-        selectedProgram.start_date
-      )
 
-      const records = buildWorkoutRecords()
-      await insertManyWorkouts(records)
+      const programData = buildConvexProgram()
+      if (!programData) {
+        setError('Failed to build program data.')
+        setPushingToDatabase(false)
+        return
+      }
+
+      await updateProgram({
+        programId: selectedProgramData._id,
+        ...programData
+      })
+
       setPushSuccess(true)
       if (successTimeoutRef.current) {
         clearTimeout(successTimeoutRef.current)
@@ -257,13 +268,7 @@ export default function ProgramEditorPage() {
       successTimeoutRef.current = setTimeout(() => setPushSuccess(false), 3000)
     } catch (err) {
       const errorMessage = (err as Error)?.message || String(err)
-      if (errorMessage.includes('SUPABASE') || errorMessage.includes('not configured')) {
-        setError(
-          'Supabase is not configured. Please add NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY to your .env.local file.'
-        )
-      } else {
-        setError('Failed to push updates: ' + errorMessage)
-      }
+      setError('Failed to push updates: ' + errorMessage)
     } finally {
       setPushingToDatabase(false)
     }
@@ -310,7 +315,7 @@ export default function ProgramEditorPage() {
       </div>
 
       <p style={{ marginBottom: '20px', color: '#666', fontSize: '14px' }}>
-        Select an athlete and program, update the plan, and push changes back to Supabase.
+        Select an athlete and program, update the plan, and push changes back to the database.
       </p>
 
       <div
@@ -333,6 +338,7 @@ export default function ProgramEditorPage() {
             <select
               value={selectedAthlete}
               onChange={(event) => setSelectedAthlete(event.target.value)}
+              disabled={athletes === undefined}
               style={{
                 width: '100%',
                 padding: '10px',
@@ -342,7 +348,7 @@ export default function ProgramEditorPage() {
                 boxSizing: 'border-box'
               }}
             >
-              <option value="">Select athlete</option>
+              <option value="">{athletes === undefined ? 'Loading...' : 'Select athlete'}</option>
               {athletes.map((athlete) => (
                 <option key={athlete} value={athlete}>
                   {athlete}
@@ -359,11 +365,11 @@ export default function ProgramEditorPage() {
               onChange={(event) => {
                 const next = programs.find(
                   (program) =>
-                    `${program.program_name}-${program.start_date}` === event.target.value
+                    `${program.programName}-${program.startDate}` === event.target.value
                 )
-                setSelectedProgram(next ?? null)
+                setSelectedProgram(next ? { program_name: next.programName, start_date: next.startDate } : null)
               }}
-              disabled={!selectedAthlete || loadingPrograms}
+              disabled={!selectedAthlete}
               style={{
                 width: '100%',
                 padding: '10px',
@@ -374,15 +380,13 @@ export default function ProgramEditorPage() {
                 boxSizing: 'border-box'
               }}
             >
-              <option value="">
-                {loadingPrograms ? 'Loading programs...' : 'Select program'}
-              </option>
+              <option value="">Select program</option>
               {programs.map((program) => (
                 <option
-                  key={`${program.program_name}-${program.start_date}`}
-                  value={`${program.program_name}-${program.start_date}`}
+                  key={`${program.programName}-${program.startDate}`}
+                  value={`${program.programName}-${program.startDate}`}
                 >
-                  {program.program_name} · {formatDate(program.start_date)}
+                  {program.programName} · {formatDate(program.startDate)}
                 </option>
               ))}
             </select>
@@ -408,7 +412,7 @@ export default function ProgramEditorPage() {
           </div>
         </div>
         <div style={{ marginTop: '14px', fontSize: '13px', color: '#6b7280' }}>
-          {loadingWorkouts
+          {selectedProgram && selectedProgramData === undefined
             ? 'Loading program data...'
             : selectedProgram
               ? 'Use the builder below to update the plan.'
@@ -430,7 +434,7 @@ export default function ProgramEditorPage() {
             cursor: pushingToDatabase || !selectedProgram ? 'not-allowed' : 'pointer'
           }}
         >
-          {pushingToDatabase ? 'Pushing...' : 'Push Updates to Supabase'}
+          {pushingToDatabase ? 'Pushing...' : 'Push Updates to Database'}
         </button>
         {pushSuccess && (
           <p style={{ marginTop: '10px', color: '#16a34a', fontWeight: 600 }}>

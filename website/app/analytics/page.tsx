@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import Link from 'next/link'
 import {
   Bar,
@@ -14,10 +14,13 @@ import {
   XAxis,
   YAxis
 } from 'recharts'
+import { useQuery } from 'convex/react'
+import { api } from '@/convex/_generated/api'
 import { WorkoutRecord } from '@/types/workout'
-import { getAthletes, getProgramsForAthlete, getWorkoutsForAthlete, getWorkoutsForAthleteProgram } from '@/lib/supabase-queries'
 import { buildExerciseVolumeData, buildWeeklyIntensityData, buildWeeklyRepData, formatNumber } from '@/lib/analytics-helpers'
 import { parseCount } from '@/lib/value-parse'
+
+const USER_ID = 'default-user'
 
 type ProgramOption = {
   program_name: string
@@ -25,82 +28,59 @@ type ProgramOption = {
 }
 
 export default function AnalyticsPage() {
-  const [athletes, setAthletes] = useState<string[]>([])
-  const [programs, setPrograms] = useState<ProgramOption[]>([])
   const [selectedAthlete, setSelectedAthlete] = useState('')
   const [selectedProgram, setSelectedProgram] = useState('')
-  const [workouts, setWorkouts] = useState<WorkoutRecord[]>([])
-  const [loadingAthletes, setLoadingAthletes] = useState(false)
-  const [loadingPrograms, setLoadingPrograms] = useState(false)
-  const [loadingWorkouts, setLoadingWorkouts] = useState(false)
-  const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
-    const loadAthletes = async () => {
-      setLoadingAthletes(true)
-      setError(null)
-      try {
-        const result = await getAthletes()
-        setAthletes(result)
-      } catch (err) {
-        console.error('Error loading athletes:', err)
-        setError('Failed to load athletes.')
-      } finally {
-        setLoadingAthletes(false)
-      }
-    }
+  const athletes = useQuery(api.programs.getAthletes, { userId: USER_ID }) ?? []
 
-    loadAthletes()
-  }, [])
+  const programs = useQuery(
+    api.programs.getProgramsForAthlete,
+    selectedAthlete ? { userId: USER_ID, athleteName: selectedAthlete } : 'skip'
+  ) ?? []
 
-  useEffect(() => {
-    if (!selectedAthlete) {
-      setPrograms([])
-      setSelectedProgram('')
-      setWorkouts([])
-      return
-    }
+  const workoutsData = useQuery(
+    api.programs.getWorkoutsForAnalytics,
+    selectedAthlete
+      ? {
+          userId: USER_ID,
+          athleteName: selectedAthlete,
+          programName: selectedProgram || undefined
+        }
+      : 'skip'
+  )
 
-    const loadPrograms = async () => {
-      setLoadingPrograms(true)
-      setError(null)
-      try {
-        const result = await getProgramsForAthlete(selectedAthlete)
-        setPrograms(result as ProgramOption[])
-      } catch (err) {
-        console.error('Error loading programs:', err)
-        setError('Failed to load programs.')
-      } finally {
-        setLoadingPrograms(false)
-      }
-    }
+  const workouts: WorkoutRecord[] = useMemo(() => {
+    if (!workoutsData) return []
+    return workoutsData.map(w => ({
+      id: '',
+      user_id: USER_ID,
+      athlete_name: w.athleteName,
+      program_name: w.programName,
+      start_date: w.startDate,
+      week_number: w.weekNumber,
+      day_number: w.dayNumber,
+      day_of_week: w.dayOfWeek ?? null,
+      exercise_number: w.exerciseNumber,
+      exercise_name: w.exerciseName,
+      exercise_category: w.exerciseCategory ?? null,
+      exercise_notes: w.exerciseNotes ?? null,
+      superset_group: w.supersetGroup ?? null,
+      superset_order: w.supersetOrder ?? null,
+      sets: w.sets ?? null,
+      reps: w.reps,
+      weights: w.weights ?? null,
+      percent: w.percent ?? null,
+      athlete_comments: w.athleteComments ?? null,
+      completed: w.completed,
+      created_at: '',
+      updated_at: ''
+    }))
+  }, [workoutsData])
 
-    loadPrograms()
-  }, [selectedAthlete])
-
-  useEffect(() => {
-    if (!selectedAthlete) {
-      return
-    }
-
-    const loadWorkouts = async () => {
-      setLoadingWorkouts(true)
-      setError(null)
-      try {
-        const data = selectedProgram
-          ? await getWorkoutsForAthleteProgram(selectedAthlete, selectedProgram)
-          : await getWorkoutsForAthlete(selectedAthlete)
-        setWorkouts(data)
-      } catch (err) {
-        console.error('Error loading workouts:', err)
-        setError('Failed to load workouts.')
-      } finally {
-        setLoadingWorkouts(false)
-      }
-    }
-
-    loadWorkouts()
-  }, [selectedAthlete, selectedProgram])
+  const loadingAthletes = athletes === undefined
+  const loadingPrograms = selectedAthlete && programs === undefined
+  const loadingWorkouts = selectedAthlete && workoutsData === undefined
+  const error = null
 
   const weeklyRepData = useMemo(() => buildWeeklyRepData(workouts), [workouts])
   const weeklyIntensityData = useMemo(() => buildWeeklyIntensityData(workouts), [workouts])
@@ -214,10 +194,10 @@ export default function AnalyticsPage() {
             <option value="">All programs</option>
             {programs.map((program) => (
               <option
-                key={`${program.program_name}-${program.start_date}`}
-                value={program.program_name}
+                key={`${program.programName}-${program.startDate}`}
+                value={program.programName}
               >
-                {program.program_name} ({program.start_date})
+                {program.programName} ({program.startDate})
               </option>
             ))}
           </select>

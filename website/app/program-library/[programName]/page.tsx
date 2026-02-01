@@ -2,31 +2,22 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
+import { useQuery, useMutation, useConvex } from 'convex/react'
+import { api } from '@/convex/_generated/api'
 import ProgramBuilder from '@/app/components/ProgramBuilder'
 import ProgramPreview from '@/app/components/ProgramPreview'
-import {
-  checkLibraryProgramExists,
-  checkProgramExists,
-  getLibraryProgramTemplate,
-  getLibraryProgramWorkouts,
-  insertManyLibraryWorkouts,
-  insertManyWorkouts,
-  replaceLibraryProgramWorkouts,
-  upsertLibraryProgramTemplate,
-  upsertProgramMetadata
-} from '@/lib/supabase-queries'
 import { applyProgramOverride, buildGeneratedProgramWeeks } from '@/lib/program-builder'
-import { buildBuilderStateFromLibraryWorkouts } from '@/lib/program-library-helpers'
 import { validateGeneratedProgramInputs } from '@/lib/program-validation'
 import { createExercise } from '@/lib/program-builder-defaults'
 import {
   ProgramBuilderDay,
-  ProgramLibraryRecord,
   RepTargets,
   WeekTotalReps,
   WorkoutRecord
 } from '@/types/workout'
 import { parseCount, parseIntensityValues } from '@/lib/value-parse'
+
+const USER_ID = 'default-user'
 
 type ProgramLibraryEditorProps = {
   params: { programName: string }
@@ -41,13 +32,14 @@ const defaultRepTargets: RepTargets = {
 }
 
 export default function ProgramLibraryEditorPage({ params }: ProgramLibraryEditorProps) {
+  const convex = useConvex()
   const decodedProgramName = decodeURIComponent(params.programName)
+  const normalizedProgramName = decodedProgramName.trim().toLowerCase()
+
   const [days, setDays] = useState<ProgramBuilderDay[]>([])
   const [weekCount, setWeekCount] = useState(4)
   const [repTargets, setRepTargets] = useState<RepTargets>(defaultRepTargets)
   const [weekTotals, setWeekTotals] = useState<WeekTotalReps[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'success' | 'error'>('idle')
   const [saveMessage, setSaveMessage] = useState<string | null>(null)
   const [copyName, setCopyName] = useState('')
@@ -56,13 +48,118 @@ export default function ProgramLibraryEditorPage({ params }: ProgramLibraryEdito
   const [assignAthlete, setAssignAthlete] = useState('')
   const [assignProgramName, setAssignProgramName] = useState('')
   const [assignStartDate, setAssignStartDate] = useState('')
-  const [assignStatus, setAssignStatus] = useState<'idle' | 'assigning' | 'success' | 'error'>(
-    'idle'
-  )
+  const [assignStatus, setAssignStatus] = useState<'idle' | 'assigning' | 'success' | 'error'>('idle')
   const [assignMessage, setAssignMessage] = useState<string | null>(null)
   const seedRef = useRef<string | null>(null)
 
-  const normalizedProgramName = decodedProgramName.trim().toLowerCase()
+  const template = useQuery(api.programTemplates.getTemplate, {
+    userId: USER_ID,
+    programName: normalizedProgramName
+  })
+
+  const saveTemplate = useMutation(api.programTemplates.saveTemplate)
+
+  const loading = template === undefined
+  const error = template === null ? 'Template not found' : null
+
+  useEffect(() => {
+    if (!template) return
+
+    // Transform nested Convex data to flat WorkoutRecord for buildBuilderStateFromWorkouts
+    const flattenedWorkouts: WorkoutRecord[] = template.weeks.flatMap((week) =>
+      week.days.flatMap((day) =>
+        day.exercises.map((ex) => ({
+          id: '',
+          user_id: USER_ID,
+          athlete_name: '',
+          program_name: template.programName,
+          start_date: '',
+          week_number: week.weekNumber,
+          day_number: day.dayNumber,
+          day_of_week: day.dayOfWeek ?? null,
+          exercise_number: ex.exerciseNumber,
+          exercise_name: ex.exerciseName,
+          exercise_category: ex.exerciseCategory ?? null,
+          exercise_notes: ex.exerciseNotes ?? null,
+          superset_group: ex.supersetGroup ?? null,
+          superset_order: ex.supersetOrder ?? null,
+          sets: ex.sets ?? null,
+          reps: ex.reps,
+          weights: ex.weights ?? null,
+          percent: ex.percent ?? null,
+          athlete_comments: null,
+          completed: false,
+          created_at: '',
+          updated_at: ''
+        }))
+      )
+    )
+
+    // Build builder state from flattened workouts
+    const dayMap = new Map<number, WorkoutRecord[]>()
+    flattenedWorkouts.forEach((workout) => {
+      if (!dayMap.has(workout.day_number)) {
+        dayMap.set(workout.day_number, [])
+      }
+      dayMap.get(workout.day_number)!.push(workout)
+    })
+
+    const initialDays: ProgramBuilderDay[] = Array.from(dayMap.entries())
+      .sort(([a], [b]) => a - b)
+      .map(([dayNumber, workouts]) => {
+        const exerciseMap = new Map<number, WorkoutRecord[]>()
+        workouts.forEach((workout) => {
+          if (!exerciseMap.has(workout.exercise_number)) {
+            exerciseMap.set(workout.exercise_number, [])
+          }
+          exerciseMap.get(workout.exercise_number)!.push(workout)
+        })
+
+        const exercises = Array.from(exerciseMap.entries())
+          .sort(([a], [b]) => a - b)
+          .map(([exerciseNumber, sets]) => {
+            const first = sets[0]
+            const intensityValues = sets
+              .map((s) => s.percent)
+              .filter((p): p is number => p !== null)
+            const repsValues = sets.map((s) => s.reps)
+
+            return {
+              id: `day-${dayNumber}-ex-${exerciseNumber}`,
+              dayNumber,
+              exerciseNumber,
+              name: first.exercise_name,
+              category: first.exercise_category || '',
+              notes: first.exercise_notes || '',
+              sets: String(sets.length),
+              reps: repsValues.length > 0 ? repsValues[0] : '',
+              intensity: intensityValues.length > 0 ? intensityValues.join(', ') : '',
+              supersetGroup: first.superset_group || '',
+              supersetOrder: first.superset_order ? String(first.superset_order) : ''
+            }
+          })
+
+        return {
+          dayNumber,
+          dayOfWeek: workouts[0]?.day_of_week || undefined,
+          dayLabel: workouts[0]?.day_of_week || undefined,
+          exercises
+        }
+      })
+
+    setDays(initialDays)
+    setWeekCount(template.weekCount)
+    setRepTargets({
+      snatch: template.repTargets.snatch,
+      clean: template.repTargets.clean,
+      jerk: template.repTargets.jerk,
+      squat: template.repTargets.squat,
+      pull: template.repTargets.pull
+    })
+    setWeekTotals(template.weekTotals.map(wt => ({ weekNumber: wt.weekNumber, total: wt.total })))
+    setCopyName('')
+    seedRef.current = `${normalizedProgramName}-${Date.now()}`
+  }, [template, normalizedProgramName])
 
   const generatedProgram = useMemo(
     () => buildGeneratedProgramWeeks(days, weekCount),
@@ -72,9 +169,7 @@ export default function ProgramLibraryEditorPage({ params }: ProgramLibraryEdito
   const handleDayLabelChange = (dayNumber: number, value: string) => {
     setDays((prev) =>
       prev.map((day) =>
-        day.dayNumber === dayNumber
-          ? { ...day, dayLabel: value }
-          : day
+        day.dayNumber === dayNumber ? { ...day, dayLabel: value } : day
       )
     )
   }
@@ -82,9 +177,7 @@ export default function ProgramLibraryEditorPage({ params }: ProgramLibraryEdito
   const handleAddExercise = (dayNumber: number) => {
     setDays((prev) =>
       prev.map((day) => {
-        if (day.dayNumber !== dayNumber) {
-          return day
-        }
+        if (day.dayNumber !== dayNumber) return day
         const nextIndex = day.exercises.length
         const nextExercise = createExercise(dayNumber, nextIndex)
         return {
@@ -95,137 +188,54 @@ export default function ProgramLibraryEditorPage({ params }: ProgramLibraryEdito
     )
   }
 
-  useEffect(() => {
-    let mounted = true
-
-    const loadLibraryProgram = async () => {
-      setLoading(true)
-      setError(null)
-      try {
-        const [workouts, template] = await Promise.all([
-          getLibraryProgramWorkouts(normalizedProgramName),
-          getLibraryProgramTemplate(normalizedProgramName)
-        ])
-
-        if (!mounted) {
-          return
-        }
-
-        const { days: initialDays, weekCount: initialWeekCount } =
-          buildBuilderStateFromLibraryWorkouts(workouts)
-
-        setDays(initialDays)
-        setWeekCount(template?.week_count ?? initialWeekCount)
-        setRepTargets(template?.rep_targets ?? defaultRepTargets)
-        setWeekTotals(template?.week_totals ?? [])
-        setCopyName('')
-        seedRef.current = `${normalizedProgramName}-${Date.now()}`
-      } catch (err) {
-        if (!mounted) {
-          return
-        }
-        const message = (err as Error)?.message || String(err)
-        setError(message)
-      } finally {
-        if (mounted) {
-          setLoading(false)
-        }
-      }
-    }
-
-    loadLibraryProgram()
-
-    return () => {
-      mounted = false
-    }
-  }, [normalizedProgramName])
-
-  const buildLibraryRecords = (programName: string):
-    Omit<ProgramLibraryRecord, 'id' | 'created_at' | 'updated_at'>[] => {
-    return generatedProgram.flatMap((week) =>
-      week.days.flatMap((day) =>
-        day.exercises.flatMap((exercise, exerciseIndex) => {
-          const dayLabel = (day.dayLabel ?? day.dayOfWeek ?? '').trim()
-          const dayOfWeek = dayLabel ? dayLabel.toLowerCase() : null
+  const buildConvexTemplate = (programName: string) => {
+    const weeks = generatedProgram.map((week) => ({
+      weekNumber: week.weekNumber,
+      days: week.days.map((day) => ({
+        dayNumber: day.dayNumber,
+        dayOfWeek: (day.dayLabel ?? day.dayOfWeek ?? '').trim().toLowerCase() || undefined,
+        dayLabel: (day.dayLabel ?? day.dayOfWeek ?? '').trim() || undefined,
+        exercises: day.exercises.map((exercise, exerciseIndex) => {
           const intensityValues = parseIntensityValues(exercise.intensity || '')
-          const parsedSets = Math.max(parseCount(exercise.sets || '') || 1, 1)
-          const setCount =
-            intensityValues.length > 0
-              ? Math.max(intensityValues.length, parsedSets)
-              : parsedSets
-          const supersetGroup = exercise.supersetGroup?.trim() || null
+          const supersetGroup = exercise.supersetGroup?.trim() || undefined
           const supersetOrder = supersetGroup
             ? Number.parseInt(exercise.supersetOrder || '', 10)
-            : null
-          const normalizedSupersetOrder = Number.isNaN(supersetOrder ?? NaN) ? null : supersetOrder
+            : undefined
+          const normalizedSupersetOrder = Number.isNaN(supersetOrder ?? NaN) ? undefined : supersetOrder
 
-          return Array.from({ length: setCount }, (_, setIndex) => ({
-            user_id: 'manual',
-            program_name: programName,
-            week_number: week.weekNumber,
-            day_number: day.dayNumber,
-            day_of_week: dayOfWeek,
-            exercise_number: exerciseIndex + 1,
-            exercise_name: exercise.name || `Exercise ${exerciseIndex + 1}`,
-            exercise_category: exercise.category?.trim() || null,
-            exercise_notes: exercise.notes?.trim() || null,
-            superset_group: supersetGroup,
-            superset_order: normalizedSupersetOrder,
-            sets: setIndex + 1,
+          return {
+            exerciseNumber: exerciseIndex + 1,
+            exerciseName: exercise.name || `Exercise ${exerciseIndex + 1}`,
+            exerciseCategory: exercise.category?.trim() || undefined,
+            exerciseNotes: exercise.notes?.trim() || undefined,
+            supersetGroup,
+            supersetOrder: normalizedSupersetOrder,
+            sets: parseCount(exercise.sets || '') || undefined,
             reps: exercise.reps || '',
-            weights: null,
-            percent: intensityValues[setIndex] ?? intensityValues[intensityValues.length - 1] ?? null,
-            athlete_comments: null,
-            completed: false
-          }))
+            weights: undefined,
+            percent: intensityValues[0] ?? undefined
+          }
         })
-      )
-    )
-  }
+      }))
+    }))
 
-  const buildWorkoutRecords = (athlete: string, program: string, start: string):
-    Omit<WorkoutRecord, 'id' | 'created_at' | 'updated_at'>[] => {
-    return generatedProgram.flatMap((week) =>
-      week.days.flatMap((day) =>
-        day.exercises.flatMap((exercise, exerciseIndex) => {
-          const dayLabel = (day.dayLabel ?? day.dayOfWeek ?? '').trim()
-          const dayOfWeek = dayLabel ? dayLabel.toLowerCase() : null
-          const intensityValues = parseIntensityValues(exercise.intensity || '')
-          const parsedSets = Math.max(parseCount(exercise.sets || '') || 1, 1)
-          const setCount =
-            intensityValues.length > 0
-              ? Math.max(intensityValues.length, parsedSets)
-              : parsedSets
-          const supersetGroup = exercise.supersetGroup?.trim() || null
-          const supersetOrder = supersetGroup
-            ? Number.parseInt(exercise.supersetOrder || '', 10)
-            : null
-          const normalizedSupersetOrder = Number.isNaN(supersetOrder ?? NaN) ? null : supersetOrder
-
-          return Array.from({ length: setCount }, (_, setIndex) => ({
-            user_id: 'manual',
-            athlete_name: athlete,
-            program_name: program,
-            start_date: start,
-            week_number: week.weekNumber,
-            day_number: day.dayNumber,
-            day_of_week: dayOfWeek,
-            exercise_number: exerciseIndex + 1,
-            exercise_name: exercise.name || `Exercise ${exerciseIndex + 1}`,
-            exercise_category: exercise.category?.trim() || null,
-            exercise_notes: exercise.notes?.trim() || null,
-            superset_group: supersetGroup,
-            superset_order: normalizedSupersetOrder,
-            sets: setIndex + 1,
-            reps: exercise.reps || '',
-            weights: null,
-            percent: intensityValues[setIndex] ?? intensityValues[intensityValues.length - 1] ?? null,
-            athlete_comments: null,
-            completed: false
-          }))
-        })
-      )
-    )
+    return {
+      userId: USER_ID,
+      programName,
+      weekCount: generatedProgram.length,
+      repTargets: {
+        snatch: repTargets.snatch || '',
+        clean: repTargets.clean || '',
+        jerk: repTargets.jerk || '',
+        squat: repTargets.squat || '',
+        pull: repTargets.pull || ''
+      },
+      weekTotals: weekTotals.map(wt => ({
+        weekNumber: wt.weekNumber,
+        total: String(wt.total)
+      })),
+      weeks
+    }
   }
 
   const handleSaveChanges = async () => {
@@ -246,24 +256,14 @@ export default function ProgramLibraryEditorPage({ params }: ProgramLibraryEdito
     setSaveMessage(null)
 
     try {
-      const records = buildLibraryRecords(normalizedProgramName)
-      await replaceLibraryProgramWorkouts(normalizedProgramName, records)
-      await upsertLibraryProgramTemplate({
-        program_name: normalizedProgramName,
-        rep_targets: repTargets,
-        week_totals: weekTotals,
-        week_count: weekCount
-      })
+      const templateData = buildConvexTemplate(normalizedProgramName)
+      await saveTemplate(templateData)
       setSaveStatus('success')
       setSaveMessage('Library program updated successfully!')
     } catch (err) {
       const message = (err as Error)?.message || String(err)
       setSaveStatus('error')
-      setSaveMessage(
-        message.includes('SUPABASE')
-          ? 'Supabase is not configured. Please add NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY to your .env.local file.'
-          : 'Failed to update library program: ' + message
-      )
+      setSaveMessage('Failed to update library program: ' + message)
     }
   }
 
@@ -294,31 +294,25 @@ export default function ProgramLibraryEditorPage({ params }: ProgramLibraryEdito
     setCopyMessage(null)
 
     try {
-      const exists = await checkLibraryProgramExists(normalizedCopyName)
+      const exists = await convex.query(api.programTemplates.checkTemplateExists, {
+        userId: USER_ID,
+        programName: normalizedCopyName
+      })
+
       if (exists) {
         setCopyStatus('error')
         setCopyMessage(`Program "${trimmedCopyName}" already exists in the library.`)
         return
       }
 
-      const records = buildLibraryRecords(normalizedCopyName)
-      await insertManyLibraryWorkouts(records)
-      await upsertLibraryProgramTemplate({
-        program_name: normalizedCopyName,
-        rep_targets: repTargets,
-        week_totals: weekTotals,
-        week_count: weekCount
-      })
+      const templateData = buildConvexTemplate(normalizedCopyName)
+      await saveTemplate(templateData)
       setCopyStatus('success')
       setCopyMessage('Library copy saved successfully!')
     } catch (err) {
       const message = (err as Error)?.message || String(err)
       setCopyStatus('error')
-      setCopyMessage(
-        message.includes('SUPABASE')
-          ? 'Supabase is not configured. Please add NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY to your .env.local file.'
-          : 'Failed to save copy: ' + message
-      )
+      setCopyMessage('Failed to save copy: ' + message)
     }
   }
 
@@ -350,7 +344,13 @@ export default function ProgramLibraryEditorPage({ params }: ProgramLibraryEdito
     setAssignMessage(null)
 
     try {
-      const exists = await checkProgramExists(normalizedAthlete, normalizedProgram)
+      const exists = await convex.query(api.programs.checkProgramExists, {
+        userId: USER_ID,
+        athleteName: normalizedAthlete,
+        programName: normalizedProgram,
+        startDate: start
+      })
+
       if (exists) {
         setAssignStatus('error')
         setAssignMessage(
@@ -359,26 +359,25 @@ export default function ProgramLibraryEditorPage({ params }: ProgramLibraryEdito
         return
       }
 
-      const records = buildWorkoutRecords(normalizedAthlete, normalizedProgram, start)
-      await insertManyWorkouts(records)
-      await upsertProgramMetadata({
-        athlete_name: normalizedAthlete,
-        program_name: normalizedProgram,
-        start_date: start,
-        rep_targets: repTargets,
-        week_totals: weekTotals,
-        week_count: weekCount
+      // First save the template if needed
+      const templateData = buildConvexTemplate(normalizedProgramName)
+      await saveTemplate(templateData)
+
+      // Then assign it to the athlete
+      await convex.mutation(api.programTemplates.assignTemplateToAthlete, {
+        userId: USER_ID,
+        templateName: normalizedProgramName,
+        athleteName: normalizedAthlete,
+        programName: normalizedProgram,
+        startDate: start
       })
+
       setAssignStatus('success')
       setAssignMessage('Program assigned successfully!')
     } catch (err) {
       const message = (err as Error)?.message || String(err)
       setAssignStatus('error')
-      setAssignMessage(
-        message.includes('SUPABASE')
-          ? 'Supabase is not configured. Please add NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY to your .env.local file.'
-          : 'Failed to assign program: ' + message
-      )
+      setAssignMessage('Failed to assign program: ' + message)
     }
   }
 
@@ -629,8 +628,8 @@ export default function ProgramLibraryEditorPage({ params }: ProgramLibraryEdito
               setDays((prev) =>
                 applyProgramOverride(prev, dayNumber, exerciseId, field, value, weekNumber)
               )
-              }
-            />
+            }
+          />
           </div>
         </>
       )}

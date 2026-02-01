@@ -84,6 +84,7 @@ export const getWorkoutsForAnalytics = query({
       program.weeks.flatMap((week) =>
         week.days.flatMap((day) =>
           day.exercises.map((ex) => ({
+            athleteName: program.athleteName,
             programName: program.programName,
             startDate: program.startDate,
             weekNumber: week.weekNumber,
@@ -247,6 +248,87 @@ export const insertProgram = mutation({
     });
 
     return programId;
+  },
+});
+
+// Update an existing program
+export const updateProgram = mutation({
+  args: {
+    programId: v.id("programs"),
+    userId: v.string(),
+    athleteName: v.string(),
+    programName: v.string(),
+    startDate: v.string(),
+    weekCount: v.number(),
+    repTargets: v.object({
+      snatch: v.string(),
+      clean: v.string(),
+      jerk: v.string(),
+      squat: v.string(),
+      pull: v.string(),
+    }),
+    weekTotals: v.array(
+      v.object({
+        weekNumber: v.number(),
+        total: v.string(),
+      })
+    ),
+    weeks: v.array(
+      v.object({
+        weekNumber: v.number(),
+        days: v.array(
+          v.object({
+            dayNumber: v.number(),
+            dayOfWeek: v.optional(v.string()),
+            dayLabel: v.optional(v.string()),
+            completed: v.boolean(),
+            rating: v.optional(
+              v.union(
+                v.literal("Trash"),
+                v.literal("Below Average"),
+                v.literal("Average"),
+                v.literal("Above Average"),
+                v.literal("Crushing It")
+              )
+            ),
+            completedAt: v.optional(v.number()),
+            exercises: v.array(
+              v.object({
+                exerciseNumber: v.number(),
+                exerciseName: v.string(),
+                exerciseCategory: v.optional(v.string()),
+                exerciseNotes: v.optional(v.string()),
+                supersetGroup: v.optional(v.string()),
+                supersetOrder: v.optional(v.number()),
+                sets: v.optional(v.number()),
+                reps: v.string(),
+                weights: v.optional(v.number()),
+                percent: v.optional(v.number()),
+                completed: v.boolean(),
+                athleteComments: v.optional(v.string()),
+              })
+            ),
+          })
+        ),
+      })
+    ),
+  },
+  handler: async (ctx, args) => {
+    const program = await ctx.db.get(args.programId);
+    if (!program) throw new Error("Program not found");
+    if (program.userId !== args.userId) throw new Error("Unauthorized");
+
+    await ctx.db.patch(args.programId, {
+      athleteName: args.athleteName,
+      programName: args.programName,
+      startDate: args.startDate,
+      weekCount: args.weekCount,
+      repTargets: args.repTargets,
+      weekTotals: args.weekTotals,
+      weeks: args.weeks,
+    });
+
+    return args.programId;
   },
 });
 
