@@ -23,7 +23,7 @@ const ProgressCard = ({ exerciseName, recentBest, pr }: ProgressCardProps) => {
             <Card.Description className='mt-2'>PR</Card.Description>
           </View>
           <View className='flex-row justify-between'>
-            <Card.Title className='mb-2 text-2xl font-bold text-text-primary'>{recentBest}kg</Card.Title>
+            <Card.Title className='mb-2 text-2xl font-bold text-blue-energy'>{recentBest}kg</Card.Title>
             <Card.Title className='mb-2 text-2xl font-bold'>{pr}kg</Card.Title>
           </View>
         </Card.Body>

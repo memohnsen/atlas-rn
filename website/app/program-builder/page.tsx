@@ -1,6 +1,8 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { useQuery, useMutation, useConvex } from 'convex/react'
+import { api } from '../../../convex/_generated/api'
 import Link from 'next/link'
 import ProgramBuilder from '../components/ProgramBuilder'
 import ProgramPreview from '../components/ProgramPreview'
@@ -23,15 +25,9 @@ import {
   ProgramBuilderTemplateId
 } from '@/lib/program-builder-defaults'
 import { parseCount, parseIntensityValues } from '@/lib/value-parse'
-import {
-  checkLibraryProgramExists,
-  checkProgramExists,
-  getAthletes,
-  insertManyLibraryWorkouts,
-  insertManyWorkouts,
-  upsertLibraryProgramTemplate,
-  upsertProgramMetadata
-} from '@/lib/supabase-queries'
+
+// TODO: Replace with actual user ID from authentication
+const USER_ID = 'default-user'
 
 export default function ProgramBuilderPage() {
   const [days, setDays] = useState<ProgramBuilderDay[]>([])
@@ -43,15 +39,21 @@ export default function ProgramBuilderPage() {
     squat: '',
     pull: ''
   })
-  const [athletes, setAthletes] = useState<string[]>([])
-  const [loadingAthletes, setLoadingAthletes] = useState(false)
-  const [athleteLoadError, setAthleteLoadError] = useState<string | null>(null)
+  // Convex queries
+  const athletesFromDb = useQuery(api.programs.getAthletes, { userId: USER_ID }) ?? []
+  const [localAthletes, setLocalAthletes] = useState<string[]>([])
+  const athletes = [...athletesFromDb, ...localAthletes].filter((v, i, a) => a.indexOf(v) === i).sort()
+
+  // Convex mutations and queries
+  const convex = useConvex()
+  const insertProgram = useMutation(api.programs.insertProgram)
+  const saveTemplate = useMutation(api.programTemplates.saveTemplate)
+
   const [showNewAthleteInput, setShowNewAthleteInput] = useState(false)
   const [newAthleteName, setNewAthleteName] = useState('')
   const [athleteInputError, setAthleteInputError] = useState<string | null>(null)
   const [weekTotals, setWeekTotals] = useState<WeekTotalReps[]>([])
   const [athleteName, setAthleteName] = useState('')
-  const [userId, setUserId] = useState('')
   const [programName, setProgramName] = useState('')
   const [startDate, setStartDate] = useState('')
   const [pushingToDatabase, setPushingToDatabase] = useState(false)
@@ -77,7 +79,6 @@ export default function ProgramBuilderPage() {
   const pushDisabled = pushingToDatabase
     || generatedProgram.length === 0
     || !athleteName.trim()
-    || !userId.trim()
     || !programName.trim()
     || !startDate.trim()
   const saveToLibraryDisabled = savingToLibrary
@@ -174,23 +175,7 @@ export default function ProgramBuilderPage() {
     )
   }
 
-  useEffect(() => {
-    const loadAthletes = async () => {
-      setLoadingAthletes(true)
-      setAthleteLoadError(null)
-      try {
-        const result = await getAthletes()
-        setAthletes(result)
-      } catch (err) {
-        console.error('Error loading athletes:', err)
-        setAthleteLoadError('Failed to load athletes.')
-      } finally {
-        setLoadingAthletes(false)
-      }
-    }
-
-    loadAthletes()
-  }, [])
+  // Athletes are loaded via Convex useQuery hook above
 
   useEffect(() => {
     if (showNewAthleteInput) {
@@ -321,9 +306,9 @@ export default function ProgramBuilderPage() {
 
     setAthleteInputError(null)
     setAthleteName(trimmedName)
-    setAthletes((prev) => {
+    setLocalAthletes((prev) => {
       const normalized = trimmedName.toLowerCase()
-      const exists = prev.some((athlete) => athlete.trim().toLowerCase() === normalized)
+      const exists = [...athletesFromDb, ...prev].some((athlete) => athlete.trim().toLowerCase() === normalized)
       if (exists) {
         return prev
       }
@@ -363,7 +348,14 @@ export default function ProgramBuilderPage() {
       const normalizedAthlete = athleteName.trim().toLowerCase()
       const normalizedProgram = programName.trim().toLowerCase()
       const start = startDate.trim()
-      const exists = await checkProgramExists(normalizedAthlete, normalizedProgram)
+
+      // Check if program exists
+      const exists = await convex.query(api.programs.checkProgramExists, {
+        userId: USER_ID,
+        athleteName: normalizedAthlete,
+        programName: normalizedProgram,
+        startDate: start
+      })
       if (exists) {
         setError(
           `Program "${programName.trim()}" already exists for athlete "${athleteName.trim()}". ` +
@@ -373,16 +365,44 @@ export default function ProgramBuilderPage() {
         return
       }
 
-      const records = buildWorkoutRecords()
-      await insertManyWorkouts(records)
-      await upsertProgramMetadata({
-        athlete_name: normalizedAthlete,
-        program_name: normalizedProgram,
-        start_date: start,
-        rep_targets: repTargets,
-        week_totals: weekTotals,
-        week_count: weekCount
+      // Transform to nested Convex structure
+      const weeks = generatedProgram.map((week) => ({
+        weekNumber: week.weekNumber,
+        days: week.days.map((day) => ({
+          dayNumber: day.dayNumber,
+          dayOfWeek: day.dayOfWeek || undefined,
+          dayLabel: day.dayLabel || undefined,
+          completed: false,
+          rating: undefined,
+          completedAt: undefined,
+          exercises: day.exercises.map((ex, idx) => ({
+            exerciseNumber: idx + 1,
+            exerciseName: ex.name || `Exercise ${idx + 1}`,
+            exerciseCategory: ex.category || undefined,
+            exerciseNotes: ex.notes || undefined,
+            supersetGroup: ex.supersetGroup || undefined,
+            supersetOrder: ex.supersetOrder ? parseInt(ex.supersetOrder) : undefined,
+            sets: ex.sets ? parseInt(ex.sets) : undefined,
+            reps: ex.reps || '',
+            weights: undefined,
+            percent: ex.intensity ? parseInt(ex.intensity) : undefined,
+            completed: false,
+            athleteComments: undefined,
+          })),
+        })),
+      }))
+
+      await insertProgram({
+        userId: USER_ID,
+        athleteName: normalizedAthlete,
+        programName: normalizedProgram,
+        startDate: start,
+        weekCount,
+        repTargets,
+        weekTotals,
+        weeks,
       })
+
       setPushSuccess(true)
       if (successTimeoutRef.current) {
         clearTimeout(successTimeoutRef.current)
@@ -390,13 +410,7 @@ export default function ProgramBuilderPage() {
       successTimeoutRef.current = setTimeout(() => setPushSuccess(false), 3000)
     } catch (err) {
       const errorMessage = (err as Error)?.message || String(err)
-      if (errorMessage.includes('SUPABASE') || errorMessage.includes('not configured')) {
-        setError(
-          'Supabase is not configured. Please add NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY to your .env.local file.'
-        )
-      } else {
-        setError('Failed to push to database: ' + errorMessage)
-      }
+      setError('Failed to push to database: ' + errorMessage)
     } finally {
       setPushingToDatabase(false)
     }
@@ -424,7 +438,12 @@ export default function ProgramBuilderPage() {
         return
       }
       const normalizedProgram = programName.trim().toLowerCase()
-      const exists = await checkLibraryProgramExists(normalizedProgram)
+
+      // Check if template exists
+      const exists = await convex.query(api.programTemplates.checkTemplateExists, {
+        userId: USER_ID,
+        programName: normalizedProgram
+      })
       if (exists) {
         setLibraryError(
           `Program "${programName.trim()}" already exists in the library. ` +
@@ -434,14 +453,37 @@ export default function ProgramBuilderPage() {
         return
       }
 
-      const records = buildLibraryRecords()
-      await insertManyLibraryWorkouts(records)
-      await upsertLibraryProgramTemplate({
-        program_name: normalizedProgram,
-        rep_targets: repTargets,
-        week_totals: weekTotals,
-        week_count: weekCount
+      // Transform to nested Convex structure
+      const weeks = generatedProgram.map((week) => ({
+        weekNumber: week.weekNumber,
+        days: week.days.map((day) => ({
+          dayNumber: day.dayNumber,
+          dayOfWeek: day.dayOfWeek || undefined,
+          dayLabel: day.dayLabel || undefined,
+          exercises: day.exercises.map((ex, idx) => ({
+            exerciseNumber: idx + 1,
+            exerciseName: ex.name || `Exercise ${idx + 1}`,
+            exerciseCategory: ex.category || undefined,
+            exerciseNotes: ex.notes || undefined,
+            supersetGroup: ex.supersetGroup || undefined,
+            supersetOrder: ex.supersetOrder ? parseInt(ex.supersetOrder) : undefined,
+            sets: ex.sets ? parseInt(ex.sets) : undefined,
+            reps: ex.reps || '',
+            weights: undefined,
+            percent: ex.intensity ? parseInt(ex.intensity) : undefined,
+          })),
+        })),
+      }))
+
+      await saveTemplate({
+        userId: USER_ID,
+        programName: normalizedProgram,
+        weekCount,
+        repTargets,
+        weekTotals,
+        weeks,
       })
+
       setLibrarySuccess(true)
       if (librarySuccessTimeoutRef.current) {
         clearTimeout(librarySuccessTimeoutRef.current)
@@ -449,13 +491,7 @@ export default function ProgramBuilderPage() {
       librarySuccessTimeoutRef.current = setTimeout(() => setLibrarySuccess(false), 3000)
     } catch (err) {
       const errorMessage = (err as Error)?.message || String(err)
-      if (errorMessage.includes('SUPABASE') || errorMessage.includes('not configured')) {
-        setLibraryError(
-          'Supabase is not configured. Please add NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY to your .env.local file.'
-        )
-      } else {
-        setLibraryError('Failed to save to library: ' + errorMessage)
-      }
+      setLibraryError('Failed to save to library: ' + errorMessage)
     } finally {
       setSavingToLibrary(false)
     }
@@ -605,18 +641,18 @@ export default function ProgramBuilderPage() {
               <select
                 value={athleteName}
                 onChange={(event) => handleSelectAthlete(event.target.value)}
-                disabled={loadingAthletes}
+                disabled={athletesFromDb === undefined}
                 style={{
                   flex: '1 1 220px',
                   padding: '10px',
                   fontSize: '14px',
                   border: '1px solid #ddd',
                   borderRadius: '4px',
-                  backgroundColor: loadingAthletes ? '#f3f4f6' : '#fff'
+                  backgroundColor: athletesFromDb === undefined ? '#f3f4f6' : '#fff'
                 }}
               >
                 <option value="">
-                  {loadingAthletes ? 'Loading athletes...' : 'Select athlete'}
+                  {athletesFromDb === undefined ? 'Loading athletes...' : 'Select athlete'}
                 </option>
                 {athletes.map((athlete) => (
                   <option key={athlete} value={athlete}>
@@ -642,11 +678,6 @@ export default function ProgramBuilderPage() {
                 Add new
               </button>
             </div>
-            {athleteLoadError && (
-              <p style={{ marginTop: '6px', marginBottom: 0, fontSize: '12px', color: '#dc2626' }}>
-                {athleteLoadError}
-              </p>
-            )}
             {showNewAthleteInput && (
               <div style={{ marginTop: '10px', display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
                 <input
@@ -708,27 +739,6 @@ export default function ProgramBuilderPage() {
           </div>
           <div>
             <label style={{ display: 'block', marginBottom: '5px', fontWeight: '600', color: '#555' }}>
-              Clerk User ID <span style={{ color: '#d00' }}>*</span>:
-            </label>
-            <input
-              type="text"
-              value={userId}
-              onChange={(event) => setUserId(event.target.value)}
-              placeholder="Enter athlete's Clerk User ID (e.g., user_2vH3UoiRGEC3ux7UPTAetUE2wAQ)"
-              style={{
-                width: '100%',
-                padding: '10px',
-                fontSize: '14px',
-                border: '1px solid #ddd',
-                borderRadius: '4px'
-              }}
-            />
-            <p style={{ marginTop: '6px', marginBottom: 0, fontSize: '12px', color: '#6b7280' }}>
-              The Clerk user ID for this athlete. This ensures the athlete can only see their own program data.
-            </p>
-          </div>
-          <div>
-            <label style={{ display: 'block', marginBottom: '5px', fontWeight: '600', color: '#555' }}>
               Program Name <span style={{ color: '#d00' }}>*</span>:
             </label>
             <input
@@ -781,7 +791,7 @@ export default function ProgramBuilderPage() {
             cursor: pushDisabled ? 'not-allowed' : 'pointer'
           }}
         >
-          {pushingToDatabase ? 'Pushing...' : 'Push Program to Supabase'}
+          {pushingToDatabase ? 'Pushing...' : 'Push Program to Database'}
         </button>
         {pushSuccess && (
           <p style={{ marginTop: '10px', color: '#16a34a', fontWeight: 600 }}>

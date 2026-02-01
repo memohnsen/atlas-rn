@@ -9,14 +9,14 @@
     --color-background: #FFFFFF;
     --color-card-background: #F2F2F7;
     --color-card-background-secondary: #F8F8FC;
-    --color-text-primary: #5386E4;
+    --color-blue-energy: #5386E4;
     --color-text-title: #000000;
   }
   @variant dark {
     --color-background: #000000;
     --color-card-background: #1C1C1E;
     --color-card-background-secondary: #2C2C2E;
-    --color-text-primary: #5386E4;
+    --color-blue-energy: #5386E4;
     --color-text-title: #FFFFFF;
   }
 }

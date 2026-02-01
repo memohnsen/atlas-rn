@@ -1,19 +1,15 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import {
-  deleteAthleteData,
-  deleteProgramData,
-  getAthletePRs,
-  getAthletes,
-  getProgramsForAthlete,
-  getWorkoutsForAthleteProgram,
-  upsertAthletePRs
-} from '@/lib/supabase-queries'
+import { useQuery, useMutation } from 'convex/react'
+import { api } from '../../../convex/_generated/api'
 import { formatDate } from '@/lib/date-format'
 import WorkoutView from '../components/WorkoutView'
 import { WorkoutRecord } from '@/types/workout'
 import { AthletePrKey, buildPrPayload, emptyPrValues, prSections, prsToFormValues } from '@/lib/athlete-prs'
+
+// TODO: Replace with actual user ID from authentication
+const USER_ID = 'default-user'
 
 interface Program {
   program_name: string
@@ -22,136 +18,60 @@ interface Program {
 
 export default function BrowsePage() {
   const [selectedAthlete, setSelectedAthlete] = useState<string | null>(null)
-  const [selectedProgram, setSelectedProgram] = useState<string | null>(null)
-  const [athletes, setAthletes] = useState<string[]>([])
-  const [programs, setPrograms] = useState<Program[]>([])
-  const [workouts, setWorkouts] = useState<WorkoutRecord[]>([])
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [selectedProgram, setSelectedProgram] = useState<{name: string, startDate: string} | null>(null)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [showDeleteProgramModal, setShowDeleteProgramModal] = useState(false)
-  const [deletingAthlete, setDeletingAthlete] = useState(false)
-  const [deletingProgram, setDeletingProgram] = useState(false)
   const [deleteError, setDeleteError] = useState<string | null>(null)
   const [deleteProgramError, setDeleteProgramError] = useState<string | null>(null)
   const [programToDelete, setProgramToDelete] = useState<Program | null>(null)
   const [prValues, setPrValues] = useState<Record<AthletePrKey, string>>(() => emptyPrValues())
-  const [loadingPrs, setLoadingPrs] = useState(false)
-  const [savingPrs, setSavingPrs] = useState(false)
   const [prError, setPrError] = useState<string | null>(null)
   const [prSuccess, setPrSuccess] = useState(false)
 
-  // Load athletes on mount
+  // Convex queries
+  const athletes = useQuery(api.programs.getAthletes, { userId: USER_ID }) ?? []
+  const programs = useQuery(
+    api.programs.getProgramsForAthlete,
+    selectedAthlete ? { userId: USER_ID, athleteName: selectedAthlete } : 'skip'
+  ) ?? []
+  const athletePRs = useQuery(
+    api.athletePRs.getAthletePRs,
+    selectedAthlete ? { athleteName: selectedAthlete } : 'skip'
+  )
+  const selectedProgramData = useQuery(
+    api.programs.getAthleteProgram,
+    selectedAthlete && selectedProgram
+      ? {
+          athleteName: selectedAthlete,
+          programName: selectedProgram.name,
+          startDate: selectedProgram.startDate,
+        }
+      : 'skip'
+  )
+
+  // Convex mutations
+  const deleteAthlete = useMutation(api.programs.deleteAthleteData)
+  const deleteProgram = useMutation(api.programs.deleteProgram)
+  const bulkUpsertPRs = useMutation(api.athletePRs.bulkUpsertPRs)
+
+  // Update PR values when athletePRs changes
   useEffect(() => {
-    const loadAthletes = async () => {
-      setLoading(true)
-      setError(null)
-      try {
-        const data = await getAthletes()
-        setAthletes(data)
-      } catch (err) {
-        console.error('Error loading athletes:', err)
-        setError('Failed to load athletes')
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    loadAthletes()
-  }, [])
-
-  const reloadAthletes = async () => {
-    setLoading(true)
-    setError(null)
-    try {
-      const data = await getAthletes()
-      setAthletes(data)
-    } catch (err) {
-      console.error('Error loading athletes:', err)
-      setError('Failed to load athletes')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  // Load programs when athlete is selected
-  useEffect(() => {
-    if (!selectedAthlete) {
-      setPrograms([])
+    if (athletePRs) {
+      setPrValues(prsToFormValues(athletePRs))
+    } else if (!selectedAthlete) {
       setPrValues(emptyPrValues())
       setPrError(null)
       setPrSuccess(false)
-      return
     }
-
-    const loadPrograms = async () => {
-      setLoading(true)
-      setError(null)
-      try {
-        const data = await getProgramsForAthlete(selectedAthlete)
-        setPrograms(data)
-      } catch (err) {
-        console.error('Error loading programs:', err)
-        setError('Failed to load programs')
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    loadPrograms()
-  }, [selectedAthlete])
-
-  useEffect(() => {
-    if (!selectedAthlete) {
-      return
-    }
-    const loadPrs = async () => {
-      setLoadingPrs(true)
-      setPrError(null)
-      try {
-        const data = await getAthletePRs(selectedAthlete)
-        setPrValues(prsToFormValues(data))
-      } catch (err) {
-        console.error('Error loading athlete PRs:', err)
-        setPrError('Failed to load athlete PRs')
-      } finally {
-        setLoadingPrs(false)
-      }
-    }
-    loadPrs()
-  }, [selectedAthlete])
-
-  // Load workouts when program is selected
-  useEffect(() => {
-    if (!selectedAthlete || !selectedProgram) {
-      setWorkouts([])
-      return
-    }
-
-    const loadWorkouts = async () => {
-      setLoading(true)
-      setError(null)
-      try {
-        const data = await getWorkoutsForAthleteProgram(selectedAthlete, selectedProgram)
-        setWorkouts(data)
-      } catch (err) {
-        console.error('Error loading workouts:', err)
-        setError('Failed to load workouts')
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    loadWorkouts()
-  }, [selectedAthlete, selectedProgram])
+  }, [athletePRs, selectedAthlete])
 
   const handleAthleteSelect = (athlete: string) => {
     setSelectedAthlete(athlete)
     setSelectedProgram(null) // Reset program selection
   }
 
-  const handleProgramSelect = (programName: string) => {
-    setSelectedProgram(programName)
+  const handleProgramSelect = (programName: string, startDate: string) => {
+    setSelectedProgram({ name: programName, startDate })
   }
 
   const handleBackToAthletes = () => {
@@ -167,18 +87,31 @@ export default function BrowsePage() {
     if (!selectedAthlete) {
       return
     }
-    setSavingPrs(true)
     setPrError(null)
     setPrSuccess(false)
     try {
-      const payload = buildPrPayload(selectedAthlete, prValues)
-      await upsertAthletePRs(payload)
+      // Convert form values to PR array
+      const prs = Object.entries(prValues)
+        .filter(([_, value]) => value && value.trim() !== '')
+        .map(([key, value]) => {
+          // Parse key like "snatch_1rm" into exerciseName and repMax
+          const match = key.match(/^(.+)_(\d+)rm$/)
+          if (!match) return null
+
+          const [_, exerciseName, repMax] = match
+          return {
+            exerciseName: exerciseName,
+            repMax: parseInt(repMax),
+            weight: parseFloat(value),
+          }
+        })
+        .filter((pr): pr is NonNullable<typeof pr> => pr !== null)
+
+      await bulkUpsertPRs({ athleteName: selectedAthlete, prs })
       setPrSuccess(true)
     } catch (err) {
       const message = (err as Error)?.message || String(err)
       setPrError(message)
-    } finally {
-      setSavingPrs(false)
     }
   }
 
@@ -186,21 +119,15 @@ export default function BrowsePage() {
     if (!selectedAthlete) {
       return
     }
-    setDeletingAthlete(true)
     setDeleteError(null)
     try {
-      await deleteAthleteData(selectedAthlete)
+      await deleteAthlete({ userId: USER_ID, athleteName: selectedAthlete })
       setShowDeleteModal(false)
       setSelectedProgram(null)
       setSelectedAthlete(null)
-      setPrograms([])
-      setWorkouts([])
-      await reloadAthletes()
     } catch (err) {
       const message = (err as Error)?.message || String(err)
       setDeleteError(message)
-    } finally {
-      setDeletingAthlete(false)
     }
   }
 
@@ -208,34 +135,56 @@ export default function BrowsePage() {
     if (!selectedAthlete || !programToDelete) {
       return
     }
-    setDeletingProgram(true)
     setDeleteProgramError(null)
     try {
-      await deleteProgramData(
-        selectedAthlete,
-        programToDelete.program_name,
-        programToDelete.start_date
-      )
-      setPrograms((prev) =>
-        prev.filter(
-          (program) =>
-            !(program.program_name === programToDelete.program_name
-              && program.start_date === programToDelete.start_date)
-        )
-      )
-      if (selectedProgram === programToDelete.program_name) {
+      await deleteProgram({
+        userId: USER_ID,
+        athleteName: selectedAthlete,
+        programName: programToDelete.program_name,
+        startDate: programToDelete.start_date,
+      })
+      if (selectedProgram?.name === programToDelete.program_name) {
         setSelectedProgram(null)
-        setWorkouts([])
       }
       setProgramToDelete(null)
       setShowDeleteProgramModal(false)
     } catch (err) {
       const message = (err as Error)?.message || String(err)
       setDeleteProgramError(message)
-    } finally {
-      setDeletingProgram(false)
     }
   }
+
+  // Convert Convex program data to workout records for WorkoutView
+  const workouts: WorkoutRecord[] = selectedProgramData
+    ? selectedProgramData.weeks.flatMap((week) =>
+        week.days.flatMap((day) =>
+          day.exercises.map((ex) => ({
+            id: `${week.weekNumber}-${day.dayNumber}-${ex.exerciseNumber}`,
+            user_id: USER_ID,
+            athlete_name: selectedProgramData.athleteName,
+            program_name: selectedProgramData.programName,
+            start_date: selectedProgramData.startDate,
+            week_number: week.weekNumber,
+            day_number: day.dayNumber,
+            day_of_week: day.dayOfWeek || null,
+            exercise_number: ex.exerciseNumber,
+            exercise_name: ex.exerciseName,
+            exercise_category: ex.exerciseCategory || null,
+            exercise_notes: ex.exerciseNotes || null,
+            superset_group: ex.supersetGroup || null,
+            superset_order: ex.supersetOrder || null,
+            sets: ex.sets || null,
+            reps: ex.reps,
+            weights: ex.weights || null,
+            percent: ex.percent || null,
+            athlete_comments: ex.athleteComments || null,
+            completed: ex.completed,
+            created_at: '',
+            updated_at: '',
+          }))
+        )
+      )
+    : []
 
   return (
     <div className="page-container">
@@ -338,24 +287,10 @@ export default function BrowsePage() {
               {selectedAthlete.charAt(0).toUpperCase() + selectedAthlete.slice(1)}
             </button>
             {' > '}
-            <span style={{ fontWeight: '600' }}>{selectedProgram}</span>
+            <span style={{ fontWeight: '600' }}>{selectedProgram.name}</span>
           </span>
         )}
       </div>
-
-      {/* Error Display */}
-      {error && (
-        <div style={{
-          padding: '15px',
-          marginBottom: '20px',
-          backgroundColor: '#fee',
-          color: '#c33',
-          borderRadius: '6px',
-          border: '1px solid #fcc'
-        }}>
-          <strong>Error:</strong> {error}
-        </div>
-      )}
 
       {/* Athletes List */}
       {!selectedAthlete && (
@@ -369,17 +304,17 @@ export default function BrowsePage() {
             Athletes
           </h2>
 
-          {loading && (
+          {athletes === undefined && (
             <p style={{ color: '#666' }}>Loading athletes...</p>
           )}
 
-          {!loading && athletes.length === 0 && (
+          {athletes && athletes.length === 0 && (
             <p style={{ color: '#666' }}>
               No athletes found. Push some workout data to the database first.
             </p>
           )}
 
-          {!loading && athletes.length > 0 && (
+          {athletes && athletes.length > 0 && (
             <div style={{
               display: 'grid',
               gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
@@ -432,15 +367,15 @@ export default function BrowsePage() {
             Programs for {selectedAthlete.charAt(0).toUpperCase() + selectedAthlete.slice(1)}
           </h2>
 
-          {loading && (
+          {programs === undefined && (
             <p style={{ color: '#666' }}>Loading programs...</p>
           )}
 
-          {!loading && programs.length === 0 && (
+          {programs && programs.length === 0 && (
             <p style={{ color: '#666' }}>No programs found for this athlete.</p>
           )}
 
-          {!loading && programs.length > 0 && (
+          {programs && programs.length > 0 && (
             <div style={{
               display: 'grid',
               gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))',
@@ -448,8 +383,8 @@ export default function BrowsePage() {
             }}>
               {programs.map(program => (
                 <div
-                  key={`${program.program_name}-${program.start_date}`}
-                  onClick={() => handleProgramSelect(program.program_name)}
+                  key={`${program.programName}-${program.startDate}`}
+                  onClick={() => handleProgramSelect(program.programName, program.startDate)}
                   role="button"
                   tabIndex={0}
                   style={{
@@ -467,7 +402,7 @@ export default function BrowsePage() {
                   onKeyDown={(event) => {
                     if (event.key === 'Enter' || event.key === ' ') {
                       event.preventDefault()
-                      handleProgramSelect(program.program_name)
+                      handleProgramSelect(program.programName, program.startDate)
                     }
                   }}
                   onMouseEnter={(e) => {
@@ -489,14 +424,17 @@ export default function BrowsePage() {
                     marginBottom: '5px'
                   }}>
                     <div style={{ fontWeight: '600' }}>
-                      {program.program_name}
+                      {program.programName}
                     </div>
                     <button
                       type="button"
                       onClick={(event) => {
                         event.stopPropagation()
                         setDeleteProgramError(null)
-                        setProgramToDelete(program)
+                        setProgramToDelete({
+                          program_name: program.programName,
+                          start_date: program.startDate
+                        })
                         setShowDeleteProgramModal(true)
                       }}
                       style={{
@@ -513,9 +451,9 @@ export default function BrowsePage() {
                       Delete
                     </button>
                   </div>
-                  {program.start_date && (
+                  {program.startDate && (
                     <div style={{ fontSize: '13px', color: 'inherit', opacity: 0.8 }}>
-                      Start: {formatDate(program.start_date)}
+                      Start: {formatDate(program.startDate)}
                     </div>
                   )}
                 </div>
@@ -539,7 +477,7 @@ export default function BrowsePage() {
           <p style={{ marginTop: 0, color: '#6b7280', fontSize: '13px' }}>
             Store current bests for {selectedAthlete}. Leave blank if not available.
           </p>
-          {loadingPrs ? (
+          {athletePRs === undefined ? (
             <p style={{ color: '#6b7280', fontSize: '13px' }}>Loading PRs...</p>
           ) : (
             <div style={{ display: 'grid', gap: '16px' }}>
@@ -578,19 +516,19 @@ export default function BrowsePage() {
             <button
               type="button"
               onClick={handleSavePrs}
-              disabled={savingPrs || loadingPrs}
+              disabled={athletePRs === undefined}
               style={{
                 padding: '10px 18px',
                 fontSize: '14px',
                 fontWeight: 600,
-                backgroundColor: savingPrs || loadingPrs ? '#93c5fd' : '#2563eb',
+                backgroundColor: athletePRs === undefined ? '#93c5fd' : '#2563eb',
                 color: 'white',
                 border: 'none',
                 borderRadius: '6px',
-                cursor: savingPrs || loadingPrs ? 'not-allowed' : 'pointer'
+                cursor: athletePRs === undefined ? 'not-allowed' : 'pointer'
               }}
             >
-              {savingPrs ? 'Saving...' : 'Save PRs'}
+              Save PRs
             </button>
             {prSuccess && (
               <span style={{ color: '#16a34a', fontSize: '13px', fontWeight: 600 }}>
@@ -609,13 +547,13 @@ export default function BrowsePage() {
       {/* Workout View */}
       {selectedAthlete && selectedProgram && (
         <div>
-          {loading && (
+          {selectedProgramData === undefined && (
             <p style={{ color: '#666' }}>Loading workouts...</p>
           )}
 
-          {!loading && workouts.length > 0 && <WorkoutView data={workouts} />}
+          {selectedProgramData && workouts.length > 0 && <WorkoutView data={workouts} />}
 
-          {!loading && workouts.length === 0 && (
+          {selectedProgramData && workouts.length === 0 && (
             <p style={{ color: '#666' }}>No workouts found for this program.</p>
           )}
         </div>
@@ -659,14 +597,13 @@ export default function BrowsePage() {
               <button
                 type="button"
                 onClick={() => setShowDeleteModal(false)}
-                disabled={deletingAthlete}
                 style={{
                   padding: '8px 14px',
                   borderRadius: '6px',
                   border: '1px solid #d1d5db',
                   backgroundColor: '#f8fafc',
                   color: '#1f2937',
-                  cursor: deletingAthlete ? 'not-allowed' : 'pointer'
+                  cursor: 'pointer'
                 }}
               >
                 Cancel
@@ -674,18 +611,17 @@ export default function BrowsePage() {
               <button
                 type="button"
                 onClick={handleDeleteAthlete}
-                disabled={deletingAthlete}
                 style={{
                   padding: '8px 14px',
                   borderRadius: '6px',
                   border: 'none',
-                  backgroundColor: deletingAthlete ? '#fca5a5' : '#ef4444',
+                  backgroundColor: '#ef4444',
                   color: 'white',
                   fontWeight: 600,
-                  cursor: deletingAthlete ? 'not-allowed' : 'pointer'
+                  cursor: 'pointer'
                 }}
               >
-                {deletingAthlete ? 'Deleting...' : 'Delete Workouts'}
+                Delete Workouts
               </button>
             </div>
           </div>
@@ -739,14 +675,13 @@ export default function BrowsePage() {
                   setShowDeleteProgramModal(false)
                   setProgramToDelete(null)
                 }}
-                disabled={deletingProgram}
                 style={{
                   padding: '8px 14px',
                   borderRadius: '6px',
                   border: '1px solid #d1d5db',
                   backgroundColor: '#f8fafc',
                   color: '#1f2937',
-                  cursor: deletingProgram ? 'not-allowed' : 'pointer'
+                  cursor: 'pointer'
                 }}
               >
                 Cancel
@@ -754,18 +689,17 @@ export default function BrowsePage() {
               <button
                 type="button"
                 onClick={handleDeleteProgram}
-                disabled={deletingProgram}
                 style={{
                   padding: '8px 14px',
                   borderRadius: '6px',
                   border: 'none',
-                  backgroundColor: deletingProgram ? '#fca5a5' : '#ef4444',
+                  backgroundColor: '#ef4444',
                   color: 'white',
                   fontWeight: 600,
-                  cursor: deletingProgram ? 'not-allowed' : 'pointer'
+                  cursor: 'pointer'
                 }}
               >
-                {deletingProgram ? 'Deleting...' : 'Delete Program'}
+                Delete Program
               </button>
             </div>
           </div>

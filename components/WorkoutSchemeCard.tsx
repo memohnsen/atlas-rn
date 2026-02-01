@@ -1,24 +1,23 @@
 import { Card, Divider } from 'heroui-native'
 import React from 'react'
 import { StyleSheet, View } from 'react-native'
-import WorkoutSetRow from './WorkoutSetRow'
 
 interface WorkoutSchemeCardProps {
     exerciseName: string
+    supersetId: string
+    reps: string
+    percent: string
 }
 
-const WorkoutSchemeCard = ({exerciseName}: WorkoutSchemeCardProps) => {
+const WorkoutSchemeCard = ({exerciseName, supersetId, reps, percent}: WorkoutSchemeCardProps) => {
   return (
     <View className='mb-4'>
       <Card>
-        <Card.Title className='mb-2 text-xl font-bold'>{exerciseName}</Card.Title>
+        <Card.Title className='mb-2 text-xl font-bold'>{supersetId}. {exerciseName}</Card.Title>
         <Divider />
-        <WorkoutSetRow sets={1} reps={3} percent={60} />
-        <WorkoutSetRow sets={1} reps={3} percent={65} />
-        <WorkoutSetRow sets={1} reps={2} percent={70} />
-        <WorkoutSetRow sets={1} reps={1} percent={75} />
-        <WorkoutSetRow sets={1} reps={1} percent={80} />
-        <WorkoutSetRow sets={1} reps={1} percent={85} />
+        <View className='bg-card-background-secondary py-2 px-4 mt-3 rounded'>
+          <Card.Description className='text-blue-energy font-bold'>{reps} @ {percent}%</Card.Description>
+        </View>
       </Card>
     </View>
   )

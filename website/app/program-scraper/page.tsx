@@ -1,11 +1,15 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useQuery, useMutation } from 'convex/react'
+import { api } from '../../../convex/_generated/api'
 import { WorkoutRecord, ScrapeResponse } from '@/types/workout'
 import WorkoutView from '../components/WorkoutView'
 import Link from 'next/link'
-import { insertManyWorkouts, checkProgramExists } from '@/lib/supabase-queries'
 import { buildScrapeErrorMessage } from '@/lib/scrape-helpers'
+
+// TODO: Replace with actual user ID from authentication
+const USER_ID = 'default-user'
 
 export default function Home() {
   const [data, setData] = useState<WorkoutRecord[]>([])
@@ -15,26 +19,23 @@ export default function Home() {
   const [tabName, setTabName] = useState('4-Day Template')
   const [athleteName, setAthleteName] = useState('')
   const [startDate, setStartDate] = useState('')
-  const [pushingToDatabase, setPushingToDatabase] = useState(false)
   const [pushSuccess, setPushSuccess] = useState(false)
-  const [programExists, setProgramExists] = useState(false)
-  // Check if program exists whenever data changes
-  useEffect(() => {
-    const checkProgram = async () => {
-      if (data.length > 0 && data[0].athlete_name && data[0].program_name) {
-        try {
-          const exists = await checkProgramExists(data[0].athlete_name, data[0].program_name)
-          setProgramExists(exists)
-        } catch (err) {
-          console.error('Error checking program existence:', err)
-        }
-      } else {
-        setProgramExists(false)
-      }
-    }
 
-    checkProgram()
-  }, [data])
+  // Check if program exists using Convex query
+  const programExists = useQuery(
+    api.programs.checkProgramExists,
+    data.length > 0 && data[0].athlete_name && data[0].program_name && data[0].start_date
+      ? {
+          userId: USER_ID,
+          athleteName: data[0].athlete_name,
+          programName: data[0].program_name,
+          startDate: data[0].start_date,
+        }
+      : 'skip'
+  ) ?? false
+
+  // Convex mutation for inserting program
+  const insertProgram = useMutation(api.programs.insertProgram)
 
   const handleScrape = async () => {
     if (!sheetUrl.trim()) {
@@ -108,24 +109,91 @@ export default function Home() {
       return
     }
 
-    setPushingToDatabase(true)
     setError(null)
     setPushSuccess(false)
 
     try {
-      await insertManyWorkouts(data)
+      // Transform flat workout records into nested Convex structure
+      const firstRecord = data[0]
+      const weekMap = new Map<number, Map<number, WorkoutRecord[]>>()
+
+      // Group exercises by week and day
+      data.forEach((workout) => {
+        if (!weekMap.has(workout.week_number)) {
+          weekMap.set(workout.week_number, new Map())
+        }
+        const dayMap = weekMap.get(workout.week_number)!
+        if (!dayMap.has(workout.day_number)) {
+          dayMap.set(workout.day_number, [])
+        }
+        dayMap.get(workout.day_number)!.push(workout)
+      })
+
+      // Build nested weeks structure
+      const weeks = Array.from(weekMap.entries())
+        .sort(([a], [b]) => a - b)
+        .map(([weekNumber, dayMap]) => ({
+          weekNumber,
+          days: Array.from(dayMap.entries())
+            .sort(([a], [b]) => a - b)
+            .map(([dayNumber, exercises]) => ({
+              dayNumber,
+              dayOfWeek: exercises[0]?.day_of_week || undefined,
+              dayLabel: undefined,
+              completed: false,
+              rating: undefined,
+              completedAt: undefined,
+              exercises: exercises
+                .sort((a, b) => a.exercise_number - b.exercise_number)
+                .map((ex) => ({
+                  exerciseNumber: ex.exercise_number,
+                  exerciseName: ex.exercise_name,
+                  exerciseCategory: ex.exercise_category || undefined,
+                  exerciseNotes: ex.exercise_notes || undefined,
+                  supersetGroup: ex.superset_group || undefined,
+                  supersetOrder: ex.superset_order || undefined,
+                  sets: ex.sets || undefined,
+                  reps: ex.reps,
+                  weights: ex.weights || undefined,
+                  percent: ex.percent || undefined,
+                  completed: false,
+                  athleteComments: undefined,
+                })),
+            })),
+        }))
+
+      // Extract or create metadata (you might want to extract this from somewhere)
+      const repTargets = {
+        snatch: '',
+        clean: '',
+        jerk: '',
+        squat: '',
+        pull: '',
+      }
+
+      const weekCount = Math.max(...data.map((w) => w.week_number))
+      const weekTotals = Array.from({ length: weekCount }, (_, i) => ({
+        weekNumber: i + 1,
+        total: '',
+      }))
+
+      await insertProgram({
+        userId: USER_ID,
+        athleteName: firstRecord.athlete_name,
+        programName: firstRecord.program_name,
+        startDate: firstRecord.start_date,
+        weekCount,
+        repTargets,
+        weekTotals,
+        weeks,
+      })
+
       setPushSuccess(true)
       setTimeout(() => setPushSuccess(false), 3000)
     } catch (err) {
       const error = err as Error
       const errorMessage = error?.message || String(err)
-      if (errorMessage.includes('SUPABASE') || errorMessage.includes('not configured')) {
-        setError('Supabase is not configured. Please add NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY to your .env.local file.')
-      } else {
-        setError('Failed to push to database: ' + errorMessage)
-      }
-    } finally {
-      setPushingToDatabase(false)
+      setError('Failed to push to database: ' + errorMessage)
     }
   }
 
@@ -356,24 +424,23 @@ export default function Home() {
 
           <button
             onClick={handlePushToDatabase}
-            disabled={pushingToDatabase || data.length === 0 || programExists}
+            disabled={data.length === 0 || programExists}
             style={{
               padding: '12px 24px',
               fontSize: '16px',
               fontWeight: '600',
               backgroundColor:
                 programExists ? '#ef4444' :
-                pushingToDatabase || data.length === 0 ? '#ccc' : '#10b981',
+                data.length === 0 ? '#ccc' : '#10b981',
               color: 'white',
               border: 'none',
               borderRadius: '6px',
-              cursor: pushingToDatabase || data.length === 0 || programExists ? 'not-allowed' : 'pointer',
+              cursor: data.length === 0 || programExists ? 'not-allowed' : 'pointer',
               transition: 'background-color 0.2s'
             }}
             title={programExists ? 'This program already exists in the database' : ''}
           >
-            {pushingToDatabase ? 'Pushing...' :
-             pushSuccess ? '✓ Pushed!' :
+            {pushSuccess ? '✓ Pushed!' :
              programExists ? '⚠ Already Exists' :
              'Push to Database'}
           </button>

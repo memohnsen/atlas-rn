@@ -1,6 +1,7 @@
 import { Metadata } from 'next'
 import { ReactNode } from 'react'
 import './globals.css'
+import { ConvexClientProvider } from '../lib/convex'
 
 export const metadata: Metadata = {
   title: 'Workout Program Viewer',
@@ -11,7 +12,9 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
       <body>
-        {children}
+        <ConvexClientProvider>
+          {children}
+        </ConvexClientProvider>
       </body>
     </html>
   )
