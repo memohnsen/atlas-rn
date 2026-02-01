@@ -37,3 +37,4 @@ next-env.d.ts
 sheet-scraper/venv/
 sheet-scraper/__pycache__/
 *.pyc
+website/convex/_generated
