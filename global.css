@@ -12,6 +12,7 @@
     --color-blue-energy: #5386E4;
     --color-text-title: #000000;
     --color-day-card: #fff;
+    --color-circle: #000000;
   }
   @variant dark {
     --color-background: #000000;
@@ -20,5 +21,6 @@
     --color-blue-energy: #5386E4;
     --color-text-title: #FFFFFF;
     --color-day-card: #2C2C2E;
+    --color-circle: #FFFFFF;
   }
 }

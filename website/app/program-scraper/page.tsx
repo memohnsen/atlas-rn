@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useQuery, useMutation } from 'convex/react'
-import { api } from '../../../convex/_generated/api'
+import { api } from '@/convex/_generated/api'
 import { WorkoutRecord, ScrapeResponse } from '@/types/workout'
 import WorkoutView from '../components/WorkoutView'
 import Link from 'next/link'

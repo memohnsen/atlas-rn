@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useQuery, useMutation, useConvex } from 'convex/react'
-import { api } from '../../../convex/_generated/api'
+import { api } from '@/convex/_generated/api'
 import Link from 'next/link'
 import ProgramBuilder from '../components/ProgramBuilder'
 import ProgramPreview from '../components/ProgramPreview'

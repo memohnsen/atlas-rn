@@ -87,7 +87,7 @@ const DayViewButtons = ({ program, selectedDate, onDateSelect }: DayViewButtonsP
                     </Text>
 
                     {status === 'completed' && <View className='w-1 h-1 rounded-full bg-green-500 mt-1' />}
-                    {status === 'scheduled' && <View className='w-1 h-1 rounded-full bg-white mt-1' />}
+                    {status === 'scheduled' && <View className='w-1 h-1 rounded-full bg-circle mt-1' />}
                     {status === null && <View className='w-1 h-1 rounded-full mt-1' />}
                   </TouchableOpacity>
                 )
@@ -102,7 +102,7 @@ const DayViewButtons = ({ program, selectedDate, onDateSelect }: DayViewButtonsP
             <View className="flex-row justify-between px-8 pt-14" >
               <Text className="text-text-title font-bold font text-xl">{month}</Text>
               <TouchableOpacity onPress={returnToToday}>
-                <Text className="text-text-title font-bold font text-md border border-white rounded p-1">Today</Text>
+                <Text className="text-text-title font-bold font text-md border border-text-title rounded p-1">Today</Text>
               </TouchableOpacity>
             </View>
             <View className='flex-row items-center justify-between px-4 h-20'>
@@ -124,7 +124,7 @@ const DayViewButtons = ({ program, selectedDate, onDateSelect }: DayViewButtonsP
                       </Text>
   
                       {status === 'completed' && <View className='w-1 h-1 rounded-full bg-green-500 mt-1' />}
-                      {status === 'scheduled' && <View className='w-1 h-1 rounded-full bg-white mt-1' />}
+                      {status === 'scheduled' && <View className='w-1 h-1 rounded-full bg-circle mt-1' />}
                       {status === null && <View className='w-1 h-1 rounded-full mt-1' />}
                     </TouchableOpacity>
                   )
