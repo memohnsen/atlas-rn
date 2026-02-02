@@ -63,7 +63,8 @@ export default function BrowsePage() {
   const [prSuccess, setPrSuccess] = useState(false)
 
   // Convex queries
-  const athletes = useQuery(api.programs.getAthletes, { userId: USER_ID }) ?? []
+  const athletes =
+    (useQuery(api.programs.getAthletes, { userId: USER_ID }) as string[] | undefined) ?? []
   const programs = useQuery(
     api.programs.getProgramsForAthlete,
     selectedAthlete ? { userId: USER_ID, athleteName: selectedAthlete } : 'skip'
