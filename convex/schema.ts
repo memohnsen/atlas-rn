@@ -47,6 +47,7 @@ export default defineSchema({
                 v.literal("Crushing It")
               )
             ),
+            sessionIntensity: v.optional(v.number()),
             completedAt: v.optional(v.number()), // timestamp
 
             // Exercises for this day

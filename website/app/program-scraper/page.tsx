@@ -141,7 +141,8 @@ export default function Home() {
               dayOfWeek: exercises[0]?.day_of_week || undefined,
               dayLabel: undefined,
               completed: false,
-              rating: undefined,
+              rating: 'Average',
+              sessionIntensity: undefined,
               completedAt: undefined,
               exercises: exercises
                 .sort((a, b) => a.exercise_number - b.exercise_number)

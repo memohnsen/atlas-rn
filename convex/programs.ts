@@ -213,6 +213,7 @@ export const insertProgram = mutation({
                 v.literal("Crushing It")
               )
             ),
+            sessionIntensity: v.optional(v.number()),
             completedAt: v.optional(v.number()),
             exercises: v.array(
               v.object({
@@ -291,6 +292,7 @@ export const updateProgram = mutation({
                 v.literal("Crushing It")
               )
             ),
+            sessionIntensity: v.optional(v.number()),
             completedAt: v.optional(v.number()),
             exercises: v.array(
               v.object({
@@ -534,6 +536,38 @@ export const updateDayRating = mutation({
           return {
             ...day,
             rating: args.rating,
+          };
+        }),
+      };
+    });
+
+    await ctx.db.patch(args.programId, { weeks: updatedWeeks });
+  },
+});
+
+// Update day session intensity
+export const updateDaySessionIntensity = mutation({
+  args: {
+    programId: v.id("programs"),
+    weekNumber: v.number(),
+    dayNumber: v.number(),
+    sessionIntensity: v.number(),
+  },
+  handler: async (ctx, args) => {
+    const program = await ctx.db.get(args.programId);
+    if (!program) throw new Error("Program not found");
+
+    const updatedWeeks = program.weeks.map((week) => {
+      if (week.weekNumber !== args.weekNumber) return week;
+
+      return {
+        ...week,
+        days: week.days.map((day) => {
+          if (day.dayNumber !== args.dayNumber) return day;
+
+          return {
+            ...day,
+            sessionIntensity: args.sessionIntensity,
           };
         }),
       };

@@ -5,6 +5,7 @@ import { Platform } from 'react-native';
 
 const Layout = () => {
     const androidTabBackground = useThemeColor('background');
+    // @ts-ignore
     const androidTabIndicatorColor = useThemeColor('blue-energy');
 
   return (
@@ -19,7 +20,7 @@ const Layout = () => {
               />
               {Platform.OS === 'android' ? <Label>Home</Label> : <Label hidden /> }
           </NativeTabs.Trigger>
-          <NativeTabs.Trigger name="trainingCalendar">
+          <NativeTabs.Trigger name="training">
               <Icon
               sf={{ default: 'calendar', selected: 'calendar' }}
               androidSrc={<VectorIcon family={MaterialCommunityIcons} name="brain" />}

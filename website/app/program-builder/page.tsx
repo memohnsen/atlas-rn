@@ -373,7 +373,8 @@ export default function ProgramBuilderPage() {
           dayOfWeek: day.dayOfWeek || undefined,
           dayLabel: day.dayLabel || undefined,
           completed: false,
-          rating: undefined,
+          rating: 'Average',
+          sessionIntensity: undefined,
           completedAt: undefined,
           exercises: day.exercises.map((ex, idx) => {
             const intensityValues = ex.intensity ? parseIntensityValues(ex.intensity) : []

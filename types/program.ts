@@ -34,6 +34,7 @@ export interface Day {
   dayLabel?: string
   completed: boolean
   rating?: DayRating
+  sessionIntensity?: number
   completedAt?: number
   exercises: Exercise[]
 }
