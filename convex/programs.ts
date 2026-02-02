@@ -223,9 +223,9 @@ export const insertProgram = mutation({
                 supersetGroup: v.optional(v.string()),
                 supersetOrder: v.optional(v.number()),
                 sets: v.optional(v.number()),
-                reps: v.string(),
+                reps: v.union(v.string(), v.array(v.string())),
                 weights: v.optional(v.number()),
-                percent: v.optional(v.number()),
+                percent: v.optional(v.union(v.number(), v.array(v.number()))),
                 completed: v.boolean(),
                 athleteComments: v.optional(v.string()),
               })
@@ -301,9 +301,9 @@ export const updateProgram = mutation({
                 supersetGroup: v.optional(v.string()),
                 supersetOrder: v.optional(v.number()),
                 sets: v.optional(v.number()),
-                reps: v.string(),
+                reps: v.union(v.string(), v.array(v.string())),
                 weights: v.optional(v.number()),
-                percent: v.optional(v.number()),
+                percent: v.optional(v.union(v.number(), v.array(v.number()))),
                 completed: v.boolean(),
                 athleteComments: v.optional(v.string()),
               })

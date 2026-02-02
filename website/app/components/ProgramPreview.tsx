@@ -288,7 +288,7 @@ export default function ProgramPreview({
     latestSearchRef.current = searchId
     searchTimeoutRef.current = setTimeout(async () => {
       try {
-        const results = await convex.query(api.exerciseLibrary.searchExercises, { query: trimmed })
+        const results = await convex.query(api.exerciseLibrary.searchExercises, { searchTerm: trimmed })
         if (latestSearchRef.current === searchId) {
           setExerciseSuggestions(results.map(r => ({
             name: r.name,
@@ -625,7 +625,7 @@ export default function ProgramPreview({
                                           )}
                                           {exerciseSuggestions.map((exerciseOption) => (
                                             <button
-                                              key={exerciseOption.id}
+                                              key={exerciseOption.name}
                                               type="button"
                                               onMouseDown={(event) => {
                                                 event.preventDefault()

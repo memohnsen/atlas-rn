@@ -59,9 +59,9 @@ export default defineSchema({
                 supersetGroup: v.optional(v.string()),
                 supersetOrder: v.optional(v.number()),
                 sets: v.optional(v.number()),
-                reps: v.string(), // Can be "10-15" range
+                reps: v.union(v.string(), v.array(v.string())), // Can be "10-15" range or ["3", "3", "3"] for multiple sets
                 weights: v.optional(v.number()),
-                percent: v.optional(v.number()),
+                percent: v.optional(v.union(v.number(), v.array(v.number()))), // Single number or [60, 65, 70] for multiple sets
 
                 // Exercise-level tracking
                 completed: v.boolean(),
@@ -117,9 +117,9 @@ export default defineSchema({
                 supersetGroup: v.optional(v.string()),
                 supersetOrder: v.optional(v.number()),
                 sets: v.optional(v.number()),
-                reps: v.string(),
+                reps: v.union(v.string(), v.array(v.string())), // Can be "10-15" range or ["3", "3", "3"] for multiple sets
                 weights: v.optional(v.number()),
-                percent: v.optional(v.number()),
+                percent: v.optional(v.union(v.number(), v.array(v.number()))), // Single number or [60, 65, 70] for multiple sets
               })
             ),
           })

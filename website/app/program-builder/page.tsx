@@ -24,7 +24,7 @@ import {
   programBuilderTemplateOptions,
   ProgramBuilderTemplateId
 } from '@/lib/program-builder-defaults'
-import { parseCount, parseIntensityValues } from '@/lib/value-parse'
+import { parseCount, parseIntensityValues, parseRepsValues } from '@/lib/value-parse'
 
 // TODO: Replace with actual user ID from authentication
 const USER_ID = 'default-user'
@@ -375,20 +375,24 @@ export default function ProgramBuilderPage() {
           completed: false,
           rating: undefined,
           completedAt: undefined,
-          exercises: day.exercises.map((ex, idx) => ({
-            exerciseNumber: idx + 1,
-            exerciseName: ex.name || `Exercise ${idx + 1}`,
-            exerciseCategory: ex.category || undefined,
-            exerciseNotes: ex.notes || undefined,
-            supersetGroup: ex.supersetGroup || undefined,
-            supersetOrder: ex.supersetOrder ? parseInt(ex.supersetOrder) : undefined,
-            sets: ex.sets ? parseInt(ex.sets) : undefined,
-            reps: ex.reps || '',
-            weights: undefined,
-            percent: ex.intensity ? parseInt(ex.intensity) : undefined,
-            completed: false,
-            athleteComments: undefined,
-          })),
+          exercises: day.exercises.map((ex, idx) => {
+            const intensityValues = ex.intensity ? parseIntensityValues(ex.intensity) : []
+            const repsValues = ex.reps ? parseRepsValues(ex.reps) : []
+            return {
+              exerciseNumber: idx + 1,
+              exerciseName: ex.name || `Exercise ${idx + 1}`,
+              exerciseCategory: ex.category || undefined,
+              exerciseNotes: ex.notes || undefined,
+              supersetGroup: ex.supersetGroup || undefined,
+              supersetOrder: ex.supersetOrder ? parseInt(ex.supersetOrder) : undefined,
+              sets: ex.sets ? parseInt(ex.sets) : undefined,
+              reps: repsValues.length > 1 ? repsValues : (repsValues[0] ?? ''),
+              weights: undefined,
+              percent: intensityValues.length > 1 ? intensityValues : (intensityValues[0] ?? undefined),
+              completed: false,
+              athleteComments: undefined,
+            }
+          }),
         })),
       }))
 
@@ -460,18 +464,22 @@ export default function ProgramBuilderPage() {
           dayNumber: day.dayNumber,
           dayOfWeek: day.dayOfWeek || undefined,
           dayLabel: day.dayLabel || undefined,
-          exercises: day.exercises.map((ex, idx) => ({
-            exerciseNumber: idx + 1,
-            exerciseName: ex.name || `Exercise ${idx + 1}`,
-            exerciseCategory: ex.category || undefined,
-            exerciseNotes: ex.notes || undefined,
-            supersetGroup: ex.supersetGroup || undefined,
-            supersetOrder: ex.supersetOrder ? parseInt(ex.supersetOrder) : undefined,
-            sets: ex.sets ? parseInt(ex.sets) : undefined,
-            reps: ex.reps || '',
-            weights: undefined,
-            percent: ex.intensity ? parseInt(ex.intensity) : undefined,
-          })),
+          exercises: day.exercises.map((ex, idx) => {
+            const intensityValues = ex.intensity ? parseIntensityValues(ex.intensity) : []
+            const repsValues = ex.reps ? parseRepsValues(ex.reps) : []
+            return {
+              exerciseNumber: idx + 1,
+              exerciseName: ex.name || `Exercise ${idx + 1}`,
+              exerciseCategory: ex.category || undefined,
+              exerciseNotes: ex.notes || undefined,
+              supersetGroup: ex.supersetGroup || undefined,
+              supersetOrder: ex.supersetOrder ? parseInt(ex.supersetOrder) : undefined,
+              sets: ex.sets ? parseInt(ex.sets) : undefined,
+              reps: repsValues.length > 1 ? repsValues : (repsValues[0] ?? ''),
+              weights: undefined,
+              percent: intensityValues.length > 1 ? intensityValues : (intensityValues[0] ?? undefined),
+            }
+          }),
         })),
       }))
 
