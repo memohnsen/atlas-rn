@@ -13,7 +13,7 @@ const TrainingCalendar = () => {
       <View className='absolute top-0 left-0 right-0 z-10'>
         <DayViewButtons />
       </View>
-      <ScrollView className='bg-background p-4' style={{ paddingTop: Platform.OS === 'ios' ? 100 : 170 }}>
+      <ScrollView className='bg-background p-4' style={{ paddingTop: Platform.OS === 'ios' ? 130 : 190 }}>
         <View className="flex flex-row items-center justify-between mb-4">
           <View className='flex-1 justify-center'>
             <Text className='text-text-title font-bold text-xl'>Day 1 - Snatch</Text>

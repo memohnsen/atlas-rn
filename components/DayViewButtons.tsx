@@ -1,7 +1,7 @@
 import { addDays, format, startOfWeek } from "date-fns";
 import { GlassView } from 'expo-glass-effect';
 import React, { useState } from 'react';
-import { Platform, Text, View } from 'react-native';
+import { Platform, Text, TouchableOpacity, View } from 'react-native';
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, { runOnJS } from "react-native-reanimated";
 import DragHandle from './DragHandle';
@@ -13,6 +13,7 @@ const DayViewButtons = () => {
   // Days row
   const weekStart = startOfWeek(weekAnchor, {weekStartsOn: 1})
   const days = Array.from({length: 7}, (_, i) => addDays(weekStart, i))
+  const month = format(weekStart, "MMMM")
 
   // Gesture handler
   const SWIPE_THRESHOLD = 40; // px-ish; tweak
@@ -41,7 +42,13 @@ const DayViewButtons = () => {
       <GestureDetector gesture={pan}>
         <Animated.View>
           <View className='rounded-b-2xl overflow-hidden bg-background'>
-            <View className='flex-row items-center justify-between px-4 pt-14 h-34'>
+            <View className="flex-row justify-between px-8 pt-14" >
+              <Text className="text-text-title font-bold font text-xl">{month}</Text>
+              <TouchableOpacity>
+                <Text className="text-text-title font-bold font text-md border border-white rounded p-1">Today</Text>
+              </TouchableOpacity>
+            </View>
+            <View className='flex-row items-center justify-between px-4 h-20'>
               {days.map((d) => (
                 <View key={format(d, "yyyy-MM-dd")} className="flex-1 justify-center items-center">
                   <Text className="text-base font-semibold text-gray-500">{format(d, "EEEEE")}</Text>
@@ -60,46 +67,30 @@ const DayViewButtons = () => {
   }
 
   return (
-    <GlassView style={{ borderRadius: 24}}>
-      <View className='flex-row items-center justify-between px-4 pt-14 h-34'>
-        <View className='flex-1 justify-center items-center'>
-          <Text className='text-base font-semibold text-gray-500'>M</Text>
-          <Text className='text-base font-semibold text-gray-500'>11</Text>
-          <View className='w-2 h-2 rounded bg-green-600 mt-1' />
-        </View>
-        <View className='flex-1 justify-center items-center'>
-          <Text className='text-base font-semibold text-gray-500'>T</Text>
-          <Text className='text-base font-semibold text-gray-500'>12</Text>
-          <View className='w-2 h-2 rounded bg-green-600 mt-1' />
-        </View>
-        <View className='flex-1 justify-center items-center'>
-          <Text className='text-base font-semibold text-gray-500'>W</Text>
-          <Text className='text-base font-semibold text-gray-500'>13</Text>
-          <View className='w-2 h-2 rounded bg-green-600 mt-1' />
-        </View>
-        <View className='flex-1 justify-center items-center'>
-          <Text className='text-base font-semibold text-gray-500'>T</Text>
-          <Text className='text-base font-semibold text-gray-500'>14</Text>
-          <View className='h-3'></View>
-        </View>
-        <View className='flex-1 justify-center items-center'>
-          <Text className='text-base font-semibold text-gray-500'>F</Text>
-          <Text className='text-base font-semibold text-gray-500'>15</Text>
-          <View className='w-2 h-2 rounded bg-white mt-1' />
-        </View>
-        <View className='flex-1 justify-center items-center'>
-          <Text className='text-base font-semibold text-gray-500'>S</Text>
-          <Text className='text-base font-semibold text-gray-500'>16</Text>
-          <View className='w-2 h-2 rounded bg-white mt-1' />
-        </View>
-        <View className='flex-1 justify-center items-center'>
-          <Text className='text-base font-semibold text-gray-500'>S</Text>
-          <Text className='text-base font-semibold text-gray-500'>17</Text>
-          <View className='h-3'></View>
-        </View>
-      </View>
-      <DragHandle />
-    </GlassView>
+    <GestureDetector gesture={pan}>
+      <Animated.View>
+        <GlassView style={{ borderRadius: 24}}>
+          <View className="flex-row justify-between px-8 pt-14" >
+            <Text className="text-text-title font-bold font text-xl">{month}</Text>
+            <TouchableOpacity>
+              <Text className="text-text-title font-bold font text-md border border-white rounded p-1">Today</Text>
+            </TouchableOpacity>
+          </View>
+          <View className='flex-row items-center justify-between px-4 h-20'>
+            {days.map((d) => (
+              <View key={format(d, "yyyy-MM-dd")} className="flex-1 justify-center items-center">
+                <Text className="text-base font-semibold text-gray-500">{format(d, "EEEEE")}</Text>
+                <Text className="text-base font-semibold text-gray-500">{format(d, "d")}</Text>
+
+                {/* show white dot if session uncompleted, green if completed, nil if nothing */}
+                <View className='w-2 h-2 rounded bg-white mt-1' />
+              </View>
+            ))}
+          </View>
+          <DragHandle />
+        </GlassView>
+      </Animated.View>
+     </GestureDetector>
   )
 }
 
