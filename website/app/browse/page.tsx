@@ -16,6 +16,40 @@ interface Program {
   start_date: string
 }
 
+type ProgramExercise = {
+  exerciseNumber: number
+  exerciseName: string
+  exerciseCategory?: string | null
+  exerciseNotes?: string | null
+  supersetGroup?: string | null
+  supersetOrder?: number | null
+  sets?: number | null
+  reps: string | string[]
+  weights?: number | null
+  percent?: number | number[] | null
+  athleteComments?: string | null
+  completed: boolean
+}
+
+type ProgramDay = {
+  dayNumber: number
+  dayOfWeek?: string | null
+  dayLabel?: string | null
+  exercises: ProgramExercise[]
+}
+
+type ProgramWeek = {
+  weekNumber: number
+  days: ProgramDay[]
+}
+
+type AthleteProgram = {
+  athleteName: string
+  programName: string
+  startDate: string
+  weeks: ProgramWeek[]
+}
+
 export default function BrowsePage() {
   const [selectedAthlete, setSelectedAthlete] = useState<string | null>(null)
   const [selectedProgram, setSelectedProgram] = useState<{name: string, startDate: string} | null>(null)
@@ -47,7 +81,7 @@ export default function BrowsePage() {
           startDate: selectedProgram.startDate,
         }
       : 'skip'
-  )
+  ) as AthleteProgram | undefined
 
   // Convex mutations
   const deleteAthlete = useMutation(api.programs.deleteAthleteData)
