@@ -1,4 +1,5 @@
-import { Program } from '@/types/types'
+import { Program } from '@/types/program'
+import { getTrainingDayByDate } from '@/utils/programUtils'
 import { format } from 'date-fns'
 import { Platform, ScrollView, Text, View } from 'react-native'
 import LiquidGlassButton from './LiquidGlassButton'
@@ -37,29 +38,19 @@ const WorkoutCard = ({ program, selectedDate }: WorkoutCardProps) => {
             </>
         )
     } else {
-        const programStart = new Date(program.startDate)
-        const daysSinceStart = Math.floor(
-            (selectedDate.getTime() - programStart.getTime()) / (1000 * 60 * 60 * 24)
-        )
-
-        let currentDay = null
-        for (const week of program.weeks) {
-            const matchingDay = week.days.find(d => d.dayNumber === daysSinceStart)
-            if (matchingDay) {
-                currentDay = matchingDay
-                break
-            }
-        }
-
+        const result = getTrainingDayByDate(program, selectedDate)
+        const currentDay = result?.day
+        const currentWeek = result?.week.weekNumber
         const exercises = currentDay?.exercises ?? []
 
         return (
             <ScrollView className='bg-background p-4'>
-                <View className='h-44'/>
+                {Platform.OS === 'android' && <View className='h-44' />}
+                {Platform.OS === 'ios' && <View className='h-30' />}
                 <View className="flex flex-row items-center justify-between mb-4">
                     <View className='flex-1 justify-center'>
                         <Text className='text-text-title font-bold text-xl'>
-                            {currentDay ? `Day ${currentDay.dayNumber}` : 'Select a day'}
+                            {currentDay ? `Week ${currentWeek} - Day ${currentDay.dayNumber}` : 'Select a day'}
                         </Text>
                         <Text className='text-gray-500 text-md mt-1'>{program.programName.toUpperCase()}</Text>
                     </View>

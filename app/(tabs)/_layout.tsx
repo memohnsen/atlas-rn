@@ -33,13 +33,13 @@ const Layout = () => {
               />
               {Platform.OS === 'android' ? <Label>Progress</Label> : <Label hidden /> }
           </NativeTabs.Trigger>
-          <NativeTabs.Trigger name="history">
+          {/* <NativeTabs.Trigger name="history">
               <Icon
               sf={{ default: 'clock.arrow.trianglehead.counterclockwise.rotate.90', selected: 'clock.arrow.trianglehead.counterclockwise.rotate.90' }}
               androidSrc={<VectorIcon family={MaterialCommunityIcons} name="cog" />}
               />
               {Platform.OS === 'android' ? <Label>History</Label> : <Label hidden /> }
-          </NativeTabs.Trigger>
+          </NativeTabs.Trigger> */}
       </NativeTabs>
   );
 }

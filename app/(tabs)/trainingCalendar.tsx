@@ -1,7 +1,7 @@
 import DayViewButtons from '@/components/DayViewButtons'
 import WorkoutCard from '@/components/WorkoutCard'
 import { api } from '@/convex/_generated/api'
-import { Program } from '@/types/types'
+import { Program } from '@/types/program'
 import { useQuery } from 'convex/react'
 import { useState } from 'react'
 import { View } from 'react-native'
@@ -17,7 +17,6 @@ const TrainingCalendar = () => {
       startDate: '2026-02-01'
   })
 
-  // Cast to Program type (handles the _id and _creationTime fields from Convex)
   const program = programData as Program | undefined
 
   return (

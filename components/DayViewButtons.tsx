@@ -1,4 +1,5 @@
-import { Program } from "@/types/types";
+import { Program } from "@/types/program";
+import { getTrainingDayByDate } from "@/utils/programUtils";
 import { addDays, format, startOfWeek } from "date-fns";
 import { GlassView } from 'expo-glass-effect';
 import { useState } from 'react';
@@ -26,25 +27,12 @@ const DayViewButtons = ({ program, selectedDate, onDateSelect }: DayViewButtonsP
     setWeekAnchor(new Date())
   }
 
-  // Interactive Cirle
+  // Interactive Circle
   const getSessionStatus = (date: Date) => {
-    if (!program) return null
-  
-    const dateStr = format(date, 'yyyy-MM-dd')
-    const programStart = new Date(program.startDate)
-  
-    const dayIndex = Math.floor(
-      (date.getTime() - programStart.getTime()) / (1000 * 60 * 60 * 24)
-    )
-  
-    for (const week of program.weeks) {
-      const day = week.days.find(d => d.dayNumber === dayIndex)
-      if (day) {
-        return day.completed ? 'completed' : 'scheduled'
-      }
-    }
-  
-    return null 
+    const result = getTrainingDayByDate(program, date)
+    if (!result) return null
+
+    return result.day.completed ? 'completed' : 'scheduled'
   }
 
   // Gesture handler
