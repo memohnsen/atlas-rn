@@ -18,10 +18,10 @@ const History = () => {
           <Chip.Label>All</Chip.Label>
         </Chip>
         <Chip variant="soft" size="lg" className='h-8'>
-          <Chip.Label>This Week</Chip.Label>
+          <Chip.Label>Past Week</Chip.Label>
         </Chip>
         <Chip variant="soft" size="lg" className='h-8'>
-          <Chip.Label>This Month</Chip.Label>
+          <Chip.Label>Past Month</Chip.Label>
         </Chip>
       </View>
 

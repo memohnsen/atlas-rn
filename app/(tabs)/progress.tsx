@@ -2,7 +2,7 @@ import Header from '@/components/Header'
 import ProgressCard from '@/components/ProgressCard'
 import { Chip } from 'heroui-native'
 import React from 'react'
-import { ScrollView, View } from 'react-native'
+import { Platform, ScrollView, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 const Progress = () => {
@@ -30,6 +30,10 @@ const Progress = () => {
       <ProgressCard exerciseName="Clean and Jerk" recentBest={120} pr={116}/>
       <ProgressCard exerciseName="Back Squat" recentBest={120} pr={116}/>
       <ProgressCard exerciseName="Front Squat" recentBest={120} pr={116}/>
+
+      {Platform.OS === 'android' &&
+         <View style={{ height: 120 }} /> 
+      }
     </ScrollView>
   )
 }

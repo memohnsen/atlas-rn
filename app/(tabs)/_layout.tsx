@@ -1,11 +1,16 @@
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { Icon, Label, NativeTabs, VectorIcon } from 'expo-router/unstable-native-tabs';
+import { useThemeColor } from 'heroui-native';
 import { Platform } from 'react-native';
 
 const Layout = () => {
+    const androidTabBackground = useThemeColor('background');
+    const androidTabIndicatorColor = useThemeColor('blue-energy');
+
   return (
       <NativeTabs
-        backgroundColor={Platform.OS === 'android' ? '#2C2C2E' : ''}
+        backgroundColor={Platform.OS === 'android' ? androidTabBackground : ''}
+        indicatorColor={Platform.OS === 'android' ? androidTabIndicatorColor : ''}
       >
           <NativeTabs.Trigger name="index">
               <Icon
