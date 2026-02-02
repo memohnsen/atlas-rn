@@ -65,10 +65,11 @@ export default function BrowsePage() {
   // Convex queries
   const athletes =
     (useQuery(api.programs.getAthletes, { userId: USER_ID }) as string[] | undefined) ?? []
-  const programs = useQuery(
-    api.programs.getProgramsForAthlete,
-    selectedAthlete ? { userId: USER_ID, athleteName: selectedAthlete } : 'skip'
-  ) ?? []
+  const programs =
+    (useQuery(
+      api.programs.getProgramsForAthlete,
+      selectedAthlete ? { userId: USER_ID, athleteName: selectedAthlete } : 'skip'
+    ) as { programName: string; startDate: string }[] | undefined) ?? []
   const athletePRs = useQuery(
     api.athletePRs.getAthletePRs,
     selectedAthlete ? { athleteName: selectedAthlete } : 'skip'

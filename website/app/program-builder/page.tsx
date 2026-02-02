@@ -40,7 +40,8 @@ export default function ProgramBuilderPage() {
     pull: ''
   })
   // Convex queries
-  const athletesFromDb = useQuery(api.programs.getAthletes, { userId: USER_ID }) ?? []
+  const athletesFromDb =
+    (useQuery(api.programs.getAthletes, { userId: USER_ID }) as string[] | undefined) ?? []
   const [localAthletes, setLocalAthletes] = useState<string[]>([])
   const athletes = [...athletesFromDb, ...localAthletes].filter((v, i, a) => a.indexOf(v) === i).sort()
 
