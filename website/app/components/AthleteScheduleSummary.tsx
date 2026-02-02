@@ -12,6 +12,12 @@ type AthleteScheduleSummary = {
   days_remaining: number | null
 }
 
+type ScheduleSummaryResponse = {
+  athleteName: string
+  lastScheduledDate: string | null
+  daysRemaining: number | null
+}
+
 function formatDate(value: string | null) {
   if (!value) {
     return 'Not scheduled'
@@ -30,11 +36,14 @@ function formatDate(value: string | null) {
 }
 
 export default function AthleteScheduleSummary() {
-  const summaries = useQuery(api.programs.getAthleteScheduleSummaries, { userId: USER_ID })
+  const summaries = useQuery(
+    api.programs.getAthleteScheduleSummaries,
+    { userId: USER_ID }
+  ) as ScheduleSummaryResponse[] | undefined
 
   const data: AthleteScheduleSummary[] = useMemo(() => {
     if (!summaries) return []
-    return summaries.map(s => ({
+    return summaries.map((s) => ({
       athlete_name: s.athleteName,
       last_session_date: s.lastScheduledDate,
       days_remaining: s.daysRemaining

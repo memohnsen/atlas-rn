@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
+import { useParams } from 'next/navigation'
 import { useQuery, useMutation, useConvex } from 'convex/react'
 import { api } from '@/convex/_generated/api'
 import ProgramBuilder from '@/app/components/ProgramBuilder'
@@ -19,10 +20,6 @@ import { parseCount, parseIntensityValues } from '@/lib/value-parse'
 
 const USER_ID = 'default-user'
 
-type ProgramLibraryEditorProps = {
-  params: { programName: string }
-}
-
 const defaultRepTargets: RepTargets = {
   snatch: '',
   clean: '',
@@ -31,9 +28,44 @@ const defaultRepTargets: RepTargets = {
   pull: ''
 }
 
-export default function ProgramLibraryEditorPage({ params }: ProgramLibraryEditorProps) {
+type TemplateExercise = {
+  exerciseNumber: number
+  exerciseName: string
+  exerciseCategory?: string | null
+  exerciseNotes?: string | null
+  supersetGroup?: string | null
+  supersetOrder?: number | null
+  sets?: number | null
+  reps: string | string[]
+  weights?: number | null
+  percent?: number | number[] | null
+}
+
+type TemplateDay = {
+  dayNumber: number
+  dayOfWeek?: string | null
+  dayLabel?: string | null
+  exercises: TemplateExercise[]
+}
+
+type TemplateWeek = {
+  weekNumber: number
+  days: TemplateDay[]
+}
+
+type ProgramTemplate = {
+  programName: string
+  weekCount: number
+  repTargets: RepTargets
+  weekTotals: WeekTotalReps[]
+  weeks: TemplateWeek[]
+}
+
+export default function ProgramLibraryEditorPage() {
+  const params = useParams<{ programName: string }>()
+  const programNameParam = params?.programName ?? ''
   const convex = useConvex()
-  const decodedProgramName = decodeURIComponent(params.programName)
+  const decodedProgramName = decodeURIComponent(programNameParam)
   const normalizedProgramName = decodedProgramName.trim().toLowerCase()
 
   const [days, setDays] = useState<ProgramBuilderDay[]>([])
@@ -55,7 +87,7 @@ export default function ProgramLibraryEditorPage({ params }: ProgramLibraryEdito
   const template = useQuery(api.programTemplates.getTemplate, {
     userId: USER_ID,
     programName: normalizedProgramName
-  })
+  }) as ProgramTemplate | null | undefined
 
   const saveTemplate = useMutation(api.programTemplates.saveTemplate)
 
@@ -68,8 +100,10 @@ export default function ProgramLibraryEditorPage({ params }: ProgramLibraryEdito
     // Transform nested Convex data to flat WorkoutRecord for buildBuilderStateFromWorkouts
     const flattenedWorkouts: WorkoutRecord[] = template.weeks.flatMap((week) =>
       week.days.flatMap((day) =>
-        day.exercises.map((ex) => ({
-          id: '',
+        day.exercises.map((ex) => {
+          const reps = Array.isArray(ex.reps) ? ex.reps[0] ?? '' : ex.reps
+          const percent = Array.isArray(ex.percent) ? ex.percent[0] ?? null : ex.percent ?? null
+          return {
           user_id: USER_ID,
           athlete_name: '',
           program_name: template.programName,
@@ -84,24 +118,29 @@ export default function ProgramLibraryEditorPage({ params }: ProgramLibraryEdito
           superset_group: ex.supersetGroup ?? null,
           superset_order: ex.supersetOrder ?? null,
           sets: ex.sets ?? null,
-          reps: ex.reps,
+          reps,
           weights: ex.weights ?? null,
-          percent: ex.percent ?? null,
+          percent,
           athlete_comments: null,
           completed: false,
           created_at: '',
           updated_at: ''
-        }))
+        }
+        })
       )
     )
 
     // Build builder state from flattened workouts
     const dayMap = new Map<number, WorkoutRecord[]>()
     flattenedWorkouts.forEach((workout) => {
-      if (!dayMap.has(workout.day_number)) {
-        dayMap.set(workout.day_number, [])
+      if (workout.day_number === null) {
+        return
       }
-      dayMap.get(workout.day_number)!.push(workout)
+      const dayNumber = workout.day_number
+      if (!dayMap.has(dayNumber)) {
+        dayMap.set(dayNumber, [])
+      }
+      dayMap.get(dayNumber)!.push(workout)
     })
 
     const initialDays: ProgramBuilderDay[] = Array.from(dayMap.entries())
@@ -140,6 +179,7 @@ export default function ProgramLibraryEditorPage({ params }: ProgramLibraryEdito
           })
 
         return {
+          id: `day-${dayNumber}`,
           dayNumber,
           dayOfWeek: workouts[0]?.day_of_week || undefined,
           dayLabel: workouts[0]?.day_of_week || undefined,

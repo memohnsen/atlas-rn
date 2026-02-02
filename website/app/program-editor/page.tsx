@@ -27,8 +27,56 @@ type ProgramOption = {
   start_date: string
 }
 
+type ProgramSummary = {
+  programName: string
+  startDate: string
+}
+
+type ProgramExercise = {
+  exerciseNumber: number
+  exerciseName: string
+  exerciseCategory?: string | null
+  exerciseNotes?: string | null
+  supersetGroup?: string | null
+  supersetOrder?: number | null
+  sets?: number | null
+  reps: string | string[]
+  weights?: number | null
+  percent?: number | number[] | null
+  completed: boolean
+  athleteComments?: string | null
+}
+
+type ProgramDay = {
+  dayNumber: number
+  dayOfWeek?: string | null
+  dayLabel?: string | null
+  completed: boolean
+  rating?: 'Trash' | 'Below Average' | 'Average' | 'Above Average' | 'Crushing It'
+  sessionIntensity?: number
+  completedAt?: number
+  exercises: ProgramExercise[]
+}
+
+type ProgramWeek = {
+  weekNumber: number
+  days: ProgramDay[]
+}
+
+type ProgramData = {
+  _id: Id<'programs'>
+  athleteName: string
+  programName: string
+  startDate: string
+  weekCount: number
+  repTargets: RepTargets
+  weekTotals: WeekTotalReps[]
+  weeks: ProgramWeek[]
+}
+
 export default function ProgramEditorPage() {
-  const athletes = useQuery(api.programs.getAthletes, { userId: USER_ID }) ?? []
+  const athletes =
+    (useQuery(api.programs.getAthletes, { userId: USER_ID }) as string[] | undefined) ?? []
   const [selectedAthlete, setSelectedAthlete] = useState('')
   const [selectedProgram, setSelectedProgram] = useState<ProgramOption | null>(null)
   const [seedDays, setSeedDays] = useState<ProgramBuilderDay[]>([])
@@ -48,22 +96,22 @@ export default function ProgramEditorPage() {
   const [error, setError] = useState<string | null>(null)
   const successTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  const programs = useQuery(
-    api.programs.getProgramsForAthlete,
-    selectedAthlete ? { userId: USER_ID, athleteName: selectedAthlete } : 'skip'
-  ) ?? []
+  const programs =
+    (useQuery(
+      api.programs.getProgramsForAthlete,
+      selectedAthlete ? { userId: USER_ID, athleteName: selectedAthlete } : 'skip'
+    ) as ProgramSummary[] | undefined) ?? []
 
   const selectedProgramData = useQuery(
     api.programs.getAthleteProgram,
     selectedAthlete && selectedProgram
       ? {
-          userId: USER_ID,
           athleteName: selectedAthlete,
           programName: selectedProgram.program_name,
           startDate: selectedProgram.start_date
         }
       : 'skip'
-  )
+  ) as ProgramData | undefined
 
   const updateProgram = useMutation(api.programs.updateProgram)
   const deleteProgram = useMutation(api.programs.deleteProgram)
@@ -120,8 +168,10 @@ export default function ProgramEditorPage() {
     // Transform nested Convex data to flat WorkoutRecord for buildBuilderStateFromWorkouts
     const flattenedWorkouts: WorkoutRecord[] = selectedProgramData.weeks.flatMap((week) =>
       week.days.flatMap((day) =>
-        day.exercises.map((ex) => ({
-          id: '',
+        day.exercises.map((ex) => {
+          const reps = Array.isArray(ex.reps) ? ex.reps[0] ?? '' : ex.reps
+          const percent = Array.isArray(ex.percent) ? ex.percent[0] ?? null : ex.percent ?? null
+          return {
           user_id: USER_ID,
           athlete_name: selectedAthlete,
           program_name: selectedProgram.program_name,
@@ -136,14 +186,15 @@ export default function ProgramEditorPage() {
           superset_group: ex.supersetGroup ?? null,
           superset_order: ex.supersetOrder ?? null,
           sets: ex.sets ?? null,
-          reps: ex.reps,
+          reps,
           weights: ex.weights ?? null,
-          percent: ex.percent ?? null,
+          percent,
           athlete_comments: ex.athleteComments ?? null,
           completed: ex.completed,
           created_at: '',
           updated_at: ''
-        }))
+        }
+        })
       )
     )
 

@@ -23,20 +23,41 @@ import { parseCount } from '@/lib/value-parse'
 const USER_ID = 'default-user'
 
 type ProgramOption = {
-  program_name: string
-  start_date: string
+  programName: string
+  startDate: string
+}
+
+type AnalyticsWorkout = {
+  athleteName: string
+  programName: string
+  startDate: string
+  weekNumber: number
+  dayNumber: number
+  dayOfWeek?: string | null
+  exerciseNumber: number
+  exerciseName: string
+  exerciseCategory?: string | null
+  exerciseNotes?: string | null
+  supersetGroup?: string | null
+  supersetOrder?: number | null
+  sets?: number | null
+  reps: string | string[]
+  weights?: number | null
+  percent?: number | number[] | null
+  athleteComments?: string | null
+  completed: boolean
 }
 
 export default function AnalyticsPage() {
   const [selectedAthlete, setSelectedAthlete] = useState('')
   const [selectedProgram, setSelectedProgram] = useState('')
 
-  const athletes = useQuery(api.programs.getAthletes, { userId: USER_ID }) ?? []
+  const athletes = (useQuery(api.programs.getAthletes, { userId: USER_ID }) as string[] | undefined) ?? []
 
   const programs = useQuery(
     api.programs.getProgramsForAthlete,
     selectedAthlete ? { userId: USER_ID, athleteName: selectedAthlete } : 'skip'
-  ) ?? []
+  ) as ProgramOption[] | undefined ?? []
 
   const workoutsData = useQuery(
     api.programs.getWorkoutsForAnalytics,
@@ -47,34 +68,37 @@ export default function AnalyticsPage() {
           programName: selectedProgram || undefined
         }
       : 'skip'
-  )
+  ) as AnalyticsWorkout[] | undefined
 
   const workouts: WorkoutRecord[] = useMemo(() => {
     if (!workoutsData) return []
-    return workoutsData.map(w => ({
-      id: '',
-      user_id: USER_ID,
-      athlete_name: w.athleteName,
-      program_name: w.programName,
-      start_date: w.startDate,
-      week_number: w.weekNumber,
-      day_number: w.dayNumber,
-      day_of_week: w.dayOfWeek ?? null,
-      exercise_number: w.exerciseNumber,
-      exercise_name: w.exerciseName,
-      exercise_category: w.exerciseCategory ?? null,
-      exercise_notes: w.exerciseNotes ?? null,
-      superset_group: w.supersetGroup ?? null,
-      superset_order: w.supersetOrder ?? null,
-      sets: w.sets ?? null,
-      reps: w.reps,
-      weights: w.weights ?? null,
-      percent: w.percent ?? null,
-      athlete_comments: w.athleteComments ?? null,
-      completed: w.completed,
-      created_at: '',
-      updated_at: ''
-    }))
+    return workoutsData.map((w) => {
+      const reps = Array.isArray(w.reps) ? w.reps[0] ?? '' : w.reps
+      const percent = Array.isArray(w.percent) ? w.percent[0] ?? null : w.percent ?? null
+      return {
+        user_id: USER_ID,
+        athlete_name: w.athleteName,
+        program_name: w.programName,
+        start_date: w.startDate,
+        week_number: w.weekNumber,
+        day_number: w.dayNumber,
+        day_of_week: w.dayOfWeek ?? null,
+        exercise_number: w.exerciseNumber,
+        exercise_name: w.exerciseName,
+        exercise_category: w.exerciseCategory ?? null,
+        exercise_notes: w.exerciseNotes ?? null,
+        superset_group: w.supersetGroup ?? null,
+        superset_order: w.supersetOrder ?? null,
+        sets: w.sets ?? null,
+        reps,
+        weights: w.weights ?? null,
+        percent,
+        athlete_comments: w.athleteComments ?? null,
+        completed: w.completed,
+        created_at: '',
+        updated_at: ''
+      }
+    })
   }, [workoutsData])
 
   const loadingAthletes = athletes === undefined

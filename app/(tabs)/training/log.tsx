@@ -515,7 +515,7 @@ const ExerciseGroupPage = ({
               </View>
               <View>
                 <Text style={{ color: colors.text, fontSize: 20, fontWeight: '700', letterSpacing: -0.3 }}>
-                  {groupKey === 'Ungrouped' ? 'Exercises' : `Superset ${groupKey}`}
+                  {groupKey === 'Ungrouped' ? 'Exercises' : `Block ${groupKey}`}
                 </Text>
                 <Text style={{ color: colors.textSecondary, fontSize: 13 }}>
                   {exercises.length} exercise{exercises.length !== 1 ? 's' : ''}

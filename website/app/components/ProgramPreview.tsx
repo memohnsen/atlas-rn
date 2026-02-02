@@ -8,8 +8,8 @@ import { GeneratedProgramWeek, ProgramBuilderExercise, RepTargets, WeekTotalReps
 type ExerciseLibraryEntry = {
   name: string
   primary?: string
-  secondary?: string
-  link?: string
+  secondary?: string | null
+  link?: string | null
 }
 
 type ProgramPreviewProps = {
@@ -288,9 +288,14 @@ export default function ProgramPreview({
     latestSearchRef.current = searchId
     searchTimeoutRef.current = setTimeout(async () => {
       try {
-        const results = await convex.query(api.exerciseLibrary.searchExercises, { searchTerm: trimmed })
+        const results = await convex.query(api.exerciseLibrary.searchExercises, { searchTerm: trimmed }) as {
+          name: string
+          primary: string
+          secondary?: string | null
+          link?: string | null
+        }[]
         if (latestSearchRef.current === searchId) {
-          setExerciseSuggestions(results.map(r => ({
+          setExerciseSuggestions(results.map((r) => ({
             name: r.name,
             primary: r.primary,
             secondary: r.secondary,

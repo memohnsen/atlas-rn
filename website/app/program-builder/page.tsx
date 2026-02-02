@@ -198,7 +198,7 @@ export default function ProgramBuilderPage() {
     const athlete = athleteName.trim().toLowerCase()
     const program = programName.trim().toLowerCase()
     const start = startDate.trim()
-    const user = userId.trim()
+    const user = USER_ID.trim()
 
     return generatedProgram.flatMap((week) =>
       week.days.flatMap((day) =>
@@ -373,7 +373,7 @@ export default function ProgramBuilderPage() {
           dayOfWeek: day.dayOfWeek || undefined,
           dayLabel: day.dayLabel || undefined,
           completed: false,
-          rating: 'Average',
+          rating: 'Average' as const,
           sessionIntensity: undefined,
           completedAt: undefined,
           exercises: day.exercises.map((ex, idx) => {

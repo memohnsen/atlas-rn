@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "dev": "next dev",
-    "build": "npm run copy-convex && next build",
+    "build": "npm run copy-convex && next build --webpack",
     "copy-convex": "mkdir -p convex/_generated && cp -r ../convex/_generated/* convex/_generated/",
     "start": "next start",
     "lint": "next lint",

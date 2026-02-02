@@ -14,14 +14,25 @@ type LibraryProgramSummary = {
   created_at?: string
 }
 
+type TemplateSummary = {
+  programName: string
+  _creationTime?: number
+}
+
 export default function ProgramLibraryPage() {
   const convex = useConvex()
-  const templates = useQuery(api.programTemplates.getTemplates) ?? []
+  const templates =
+    (useQuery(api.programTemplates.getTemplates, { userId: USER_ID }) as TemplateSummary[] | undefined) ??
+    []
   const assignTemplate = useMutation(api.programTemplates.assignTemplateToAthlete)
   const [assignments, setAssignments] = useState<Record<string, AssignmentState>>({})
 
   const programs: LibraryProgramSummary[] = useMemo(
-    () => templates.map(t => ({ program_name: t.programName, created_at: t._creationTime ? new Date(t._creationTime).toISOString() : undefined })),
+    () =>
+      templates.map((t) => ({
+        program_name: t.programName,
+        created_at: t._creationTime ? new Date(t._creationTime).toISOString() : undefined
+      })),
     [templates]
   )
 

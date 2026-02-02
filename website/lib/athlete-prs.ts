@@ -92,13 +92,32 @@ export const parsePrValue = (value: string) => {
   return Number.isFinite(parsed) ? parsed : null
 }
 
-export const prsToFormValues = (prs: AthletePRs | null): Record<AthletePrKey, string> => {
+type GroupedPrs = Record<string, Record<string, number>>
+
+export const prsToFormValues = (
+  prs: AthletePRs | GroupedPrs | null
+): Record<AthletePrKey, string> => {
   const base = emptyPrValues()
   if (!prs) {
     return base
   }
+  if ('athlete_name' in prs) {
+    prFieldKeys.forEach((key) => {
+      const value = prs[key]
+      base[key] = value === null || value === undefined ? '' : String(value)
+    })
+    return base
+  }
+
   prFieldKeys.forEach((key) => {
-    const value = prs[key]
+    const match = key.match(/^(.+)_([0-9]+)rm$/)
+    if (!match) {
+      base[key] = ''
+      return
+    }
+    const exerciseName = match[1]
+    const repKey = `${match[2]}rm`
+    const value = prs[exerciseName]?.[repKey]
     base[key] = value === null || value === undefined ? '' : String(value)
   })
   return base

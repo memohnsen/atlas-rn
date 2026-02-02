@@ -119,14 +119,18 @@ export default function Home() {
 
       // Group exercises by week and day
       data.forEach((workout) => {
+        if (workout.day_number === null) {
+          return
+        }
         if (!weekMap.has(workout.week_number)) {
           weekMap.set(workout.week_number, new Map())
         }
         const dayMap = weekMap.get(workout.week_number)!
-        if (!dayMap.has(workout.day_number)) {
-          dayMap.set(workout.day_number, [])
+        const dayNumber = workout.day_number
+        if (!dayMap.has(dayNumber)) {
+          dayMap.set(dayNumber, [])
         }
-        dayMap.get(workout.day_number)!.push(workout)
+        dayMap.get(dayNumber)!.push(workout)
       })
 
       // Build nested weeks structure
@@ -141,7 +145,7 @@ export default function Home() {
               dayOfWeek: exercises[0]?.day_of_week || undefined,
               dayLabel: undefined,
               completed: false,
-              rating: 'Average',
+              rating: 'Average' as const,
               sessionIntensity: undefined,
               completedAt: undefined,
               exercises: exercises

@@ -158,8 +158,10 @@ export default function BrowsePage() {
   const workouts: WorkoutRecord[] = selectedProgramData
     ? selectedProgramData.weeks.flatMap((week) =>
         week.days.flatMap((day) =>
-          day.exercises.map((ex) => ({
-            id: `${week.weekNumber}-${day.dayNumber}-${ex.exerciseNumber}`,
+          day.exercises.map((ex) => {
+            const reps = Array.isArray(ex.reps) ? ex.reps[0] ?? '' : ex.reps
+            const percent = Array.isArray(ex.percent) ? ex.percent[0] ?? null : ex.percent ?? null
+            return {
             user_id: USER_ID,
             athlete_name: selectedProgramData.athleteName,
             program_name: selectedProgramData.programName,
@@ -174,14 +176,15 @@ export default function BrowsePage() {
             superset_group: ex.supersetGroup || null,
             superset_order: ex.supersetOrder || null,
             sets: ex.sets || null,
-            reps: ex.reps,
+            reps,
             weights: ex.weights || null,
-            percent: ex.percent || null,
+            percent,
             athlete_comments: ex.athleteComments || null,
             completed: ex.completed,
             created_at: '',
             updated_at: '',
-          }))
+          }
+          })
         )
       )
     : []
