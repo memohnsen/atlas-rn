@@ -8,9 +8,9 @@ import {
   groupExercisesBySuperset,
 } from '@/utils/programUtils'
 import { useMutation, useQuery } from 'convex/react'
-import { useLocalSearchParams, useRouter } from 'expo-router'
 import { parse } from 'date-fns'
 import * as Haptics from 'expo-haptics'
+import { useLocalSearchParams, useRouter } from 'expo-router'
 import { SymbolView } from 'expo-symbols'
 import { useMemo, useRef, useState } from 'react'
 import {
@@ -237,21 +237,6 @@ const TrainingLog = () => {
               }}
             />
           ))}
-        </Animated.View>
-
-        {/* Step label */}
-        <Animated.View entering={FadeIn.duration(400).delay(300)} style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Text style={{ color: colors.textTertiary, fontSize: 12, fontWeight: '600', letterSpacing: 0.5, textTransform: 'uppercase' }}>
-            {pageIndex === 0
-              ? 'Readiness Check'
-              : pageIndex === pages.length - 1
-                ? 'Session Review'
-                : `Block ${pages[pageIndex]?.key?.replace('group-', '') ?? ''}`
-            }
-          </Text>
-          <Text style={{ color: colors.textTertiary, fontSize: 12, fontWeight: '500', fontVariant: ['tabular-nums'] }}>
-            {pageIndex + 1}/{pages.length}
-          </Text>
         </Animated.View>
       </View>
 
@@ -624,18 +609,21 @@ const ExerciseCard = ({ exercise, index, prs, activeReadiness, onToggle, colors,
               width: 28,
               height: 28,
               borderRadius: 14,
-              backgroundColor: exercise.completed ? colors.green : 'transparent',
-              borderWidth: exercise.completed ? 0 : 2,
-              borderColor: exercise.completed ? colors.green : colors.textTertiary,
+              backgroundColor: exercise.completed ? colors.green : (isDark ? '#3A3A3C' : '#DEDEE3'),
               alignItems: 'center',
               justifyContent: 'center',
             }}
           >
-            {exercise.completed && Platform.OS === 'ios' && (
-              <SymbolView name="checkmark" tintColor="#fff" size={14} weight="bold" />
+            {Platform.OS === 'ios' && (
+              <SymbolView
+                name="checkmark"
+                tintColor={exercise.completed ? '#fff' : (isDark ? '#636366' : '#AEAEB2')}
+                size={14}
+                weight="bold"
+              />
             )}
-            {exercise.completed && Platform.OS !== 'ios' && (
-              <Text style={{ color: '#fff', fontSize: 13, fontWeight: '800' }}>✓</Text>
+            {Platform.OS !== 'ios' && (
+              <Text style={{ color: exercise.completed ? '#fff' : (isDark ? '#636366' : '#AEAEB2'), fontSize: 13, fontWeight: '800' }}>✓</Text>
             )}
           </View>
         </Animated.View>
@@ -645,7 +633,7 @@ const ExerciseCard = ({ exercise, index, prs, activeReadiness, onToggle, colors,
           <Text
             style={{
               color: exercise.completed ? colors.textSecondary : colors.text,
-              fontSize: 16,
+              fontSize: 20,
               fontWeight: '600',
               textDecorationLine: exercise.completed ? 'line-through' : 'none',
             }}
@@ -743,6 +731,23 @@ const ExerciseCard = ({ exercise, index, prs, activeReadiness, onToggle, colors,
                   }}
                 >
                   {set.weight !== undefined ? `${set.weight} kg` : `${set.effectivePercent}%`}
+                </Text>
+              </>
+            )}
+
+            {/* Effective percent, right-aligned */}
+            {set.effectivePercent !== undefined && (
+              <>
+                <View style={{ flex: 1 }} />
+                <Text
+                  style={{
+                    color: colors.textTertiary,
+                    fontSize: 15,
+                    fontWeight: '500',
+                    fontVariant: ['tabular-nums'],
+                  }}
+                >
+                  {set.effectivePercent}%
                 </Text>
               </>
             )}
