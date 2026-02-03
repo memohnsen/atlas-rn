@@ -62,7 +62,17 @@ export default defineSchema({
                 sets: v.optional(v.number()),
                 reps: v.union(v.string(), v.array(v.string())), // Can be "10-15" range or ["3", "3", "3"] for multiple sets
                 weights: v.optional(v.number()),
+                setWeights: v.optional(v.array(v.number())),
                 percent: v.optional(v.union(v.number(), v.array(v.number()))), // Single number or [60, 65, 70] for multiple sets
+                setStatuses: v.optional(
+                  v.array(
+                    v.union(
+                      v.literal("pending"),
+                      v.literal("complete"),
+                      v.literal("miss")
+                    )
+                  )
+                ),
 
                 // Exercise-level tracking
                 completed: v.boolean(),

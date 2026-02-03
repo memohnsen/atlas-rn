@@ -23,7 +23,9 @@ export interface Exercise {
   sets?: number
   reps: string | string[]
   weights?: number
+  setWeights?: number[]
   percent?: number | number[]
+  setStatuses?: Array<'pending' | 'complete' | 'miss'>
   completed: boolean
   athleteComments?: string
 }

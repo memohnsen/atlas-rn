@@ -269,7 +269,17 @@ export const insertProgram = mutation({
                 sets: v.optional(v.number()),
                 reps: v.union(v.string(), v.array(v.string())),
                 weights: v.optional(v.number()),
+                setWeights: v.optional(v.array(v.number())),
                 percent: v.optional(v.union(v.number(), v.array(v.number()))),
+                setStatuses: v.optional(
+                  v.array(
+                    v.union(
+                      v.literal("pending"),
+                      v.literal("complete"),
+                      v.literal("miss")
+                    )
+                  )
+                ),
                 completed: v.boolean(),
                 athleteComments: v.optional(v.string()),
               })
@@ -348,7 +358,17 @@ export const updateProgram = mutation({
                 sets: v.optional(v.number()),
                 reps: v.union(v.string(), v.array(v.string())),
                 weights: v.optional(v.number()),
+                setWeights: v.optional(v.array(v.number())),
                 percent: v.optional(v.union(v.number(), v.array(v.number()))),
+                setStatuses: v.optional(
+                  v.array(
+                    v.union(
+                      v.literal("pending"),
+                      v.literal("complete"),
+                      v.literal("miss")
+                    )
+                  )
+                ),
                 completed: v.boolean(),
                 athleteComments: v.optional(v.string()),
               })
@@ -497,13 +517,83 @@ export const markExerciseComplete = mutation({
             exercises: day.exercises.map((ex) => {
               if (ex.exerciseNumber !== args.exerciseNumber) return ex;
 
+              let nextWeight = ex.weights;
+              if (args.completed) {
+                const setWeights = ex.setWeights ?? [];
+                const setStatuses = ex.setStatuses ?? [];
+                if (setWeights.length > 0) {
+                  const filtered = setWeights.filter(
+                    (value, index) => setStatuses[index] !== "miss" && value > 0
+                  );
+                  const max = filtered.length > 0 ? Math.max(...filtered) : undefined;
+                  if (typeof max === "number") {
+                    nextWeight = max;
+                  }
+                } else if (typeof args.weight === "number") {
+                  nextWeight = args.weight;
+                }
+              }
+
               return {
                 ...ex,
                 completed: args.completed,
-                weights:
-                  args.completed && typeof args.weight === "number"
-                    ? args.weight
-                    : ex.weights,
+                weights: nextWeight,
+              };
+            }),
+          };
+        }),
+      };
+    });
+
+    await ctx.db.patch(args.programId, { weeks: updatedWeeks });
+  },
+});
+
+// Update per-set data for an exercise
+export const updateExerciseSets = mutation({
+  args: {
+    programId: v.id("programs"),
+    weekNumber: v.number(),
+    dayNumber: v.number(),
+    exerciseNumber: v.number(),
+    reps: v.array(v.string()),
+    percent: v.optional(v.array(v.number())),
+    setWeights: v.optional(v.array(v.number())),
+    setStatuses: v.optional(
+      v.array(
+        v.union(
+          v.literal("pending"),
+          v.literal("complete"),
+          v.literal("miss")
+        )
+      )
+    ),
+    sets: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const program = await ctx.db.get(args.programId);
+    if (!program) throw new Error("Program not found");
+
+    const updatedWeeks = program.weeks.map((week) => {
+      if (week.weekNumber !== args.weekNumber) return week;
+
+      return {
+        ...week,
+        days: week.days.map((day) => {
+          if (day.dayNumber !== args.dayNumber) return day;
+
+          return {
+            ...day,
+            exercises: day.exercises.map((ex) => {
+              if (ex.exerciseNumber !== args.exerciseNumber) return ex;
+
+              return {
+                ...ex,
+                reps: args.reps,
+                percent: args.percent ?? ex.percent,
+                setWeights: args.setWeights ?? ex.setWeights,
+                setStatuses: args.setStatuses ?? ex.setStatuses,
+                sets: args.sets ?? args.reps.length,
               };
             }),
           };

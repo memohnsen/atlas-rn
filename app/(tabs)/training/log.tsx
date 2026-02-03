@@ -12,12 +12,13 @@ import { parse } from 'date-fns'
 import * as Haptics from 'expo-haptics'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { SymbolView } from 'expo-symbols'
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   FlatList,
   Platform,
   Pressable,
   Text,
+  TextInput,
   useColorScheme,
   useWindowDimensions,
   View,
@@ -48,6 +49,20 @@ const READINESS_OPTIONS: {
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable)
 
+type SetStatus = 'pending' | 'complete' | 'miss'
+
+type UpdateExerciseSets = (args: {
+  programId: Id<'programs'>
+  weekNumber: number
+  dayNumber: number
+  exerciseNumber: number
+  reps: string[]
+  percent?: number[]
+  setWeights?: number[]
+  setStatuses?: SetStatus[]
+  sets?: number
+}) => Promise<unknown>
+
 // ─── Main Component ────────────────────────────────────────
 
 const TrainingLog = () => {
@@ -74,6 +89,7 @@ const TrainingLog = () => {
   const updateDaySessionIntensity = useMutation(api.programs.updateDaySessionIntensity)
   const markDayComplete = useMutation(api.programs.markDayComplete)
   const markExerciseComplete = useMutation(api.programs.markExerciseComplete)
+  const updateExerciseSets = useMutation(api.programs.updateExerciseSets)
   const prs = useQuery(api.athletePRs.getAthletePRs, {
     athleteName: program?.athleteName ?? 'maddisen',
   })
@@ -155,7 +171,7 @@ const TrainingLog = () => {
     router.back()
   }
 
-  const handleExerciseToggle = async (exerciseNumber: number, completed: boolean) => {
+  const handleExerciseToggle = async (exerciseNumber: number, completed: boolean, weight?: number) => {
     if (Platform.OS === 'ios') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
     await markExerciseComplete({
       programId: program._id,
@@ -163,6 +179,7 @@ const TrainingLog = () => {
       dayNumber,
       exerciseNumber,
       completed: !completed,
+      weight,
     })
   }
 
@@ -278,6 +295,10 @@ const TrainingLog = () => {
                 prs={prs}
                 activeReadiness={activeReadiness}
                 onExerciseToggle={handleExerciseToggle}
+                onUpdateSets={updateExerciseSets}
+                programId={program._id}
+                weekNumber={weekNumber}
+                dayNumber={dayNumber}
                 colors={colors}
                 isDark={isDark}
               />
@@ -473,7 +494,11 @@ interface ExerciseGroupPageProps {
   exercises: Exercise[]
   prs: Record<string, Record<string, number>> | undefined
   activeReadiness: DayRating
-  onExerciseToggle: (exerciseNumber: number, completed: boolean) => void
+  onExerciseToggle: (exerciseNumber: number, completed: boolean, weight?: number) => void
+  onUpdateSets: UpdateExerciseSets
+  programId: Id<'programs'>
+  weekNumber: number
+  dayNumber: number
   colors: Record<string, string>
   isDark: boolean
 }
@@ -485,6 +510,10 @@ const ExerciseGroupPage = ({
   prs,
   activeReadiness,
   onExerciseToggle,
+  onUpdateSets,
+  programId,
+  weekNumber,
+  dayNumber,
   colors,
   isDark,
 }: ExerciseGroupPageProps) => {
@@ -532,6 +561,10 @@ const ExerciseGroupPage = ({
             prs={prs}
             activeReadiness={activeReadiness}
             onToggle={onExerciseToggle}
+            onUpdateSets={onUpdateSets}
+            programId={programId}
+            weekNumber={weekNumber}
+            dayNumber={dayNumber}
             colors={colors}
             isDark={isDark}
           />
@@ -549,37 +582,182 @@ interface ExerciseCardProps {
   index: number
   prs: Record<string, Record<string, number>> | undefined
   activeReadiness: DayRating
-  onToggle: (exerciseNumber: number, completed: boolean) => void
+  onToggle: (exerciseNumber: number, completed: boolean, weight?: number) => void
+  onUpdateSets: UpdateExerciseSets
+  programId: Id<'programs'>
+  weekNumber: number
+  dayNumber: number
   colors: Record<string, string>
   isDark: boolean
 }
 
-const ExerciseCard = ({ exercise, index, prs, activeReadiness, onToggle, colors, isDark }: ExerciseCardProps) => {
+const ExerciseCard = ({
+  exercise,
+  index,
+  prs,
+  activeReadiness,
+  onToggle,
+  onUpdateSets,
+  programId,
+  weekNumber,
+  dayNumber,
+  colors,
+  isDark,
+}: ExerciseCardProps) => {
   const repsArray = Array.isArray(exercise.reps) ? exercise.reps : [exercise.reps]
   const percentArray = Array.isArray(exercise.percent)
     ? exercise.percent
     : exercise.percent !== undefined
       ? [exercise.percent]
       : []
-  const setCount = exercise.sets ?? Math.max(repsArray.length, percentArray.length, 1)
+  const setWeightsArray = exercise.setWeights ?? []
+  const setStatusesArray = exercise.setStatuses ?? []
+  const setCount = Math.max(
+    repsArray.length,
+    percentArray.length,
+    setWeightsArray.length,
+    setStatusesArray.length,
+    exercise.sets ?? 0,
+    1,
+  )
   const oneRepMax =
     getOneRepMax(prs, exercise.exerciseCategory) ??
     getOneRepMax(prs, exercise.exerciseName)
 
+  const [repsBySet, setRepsBySet] = useState<string[]>([])
+  const [weightsBySet, setWeightsBySet] = useState<string[]>([])
+  const [statusesBySet, setStatusesBySet] = useState<SetStatus[]>([])
+  const [percentBySet, setPercentBySet] = useState<number[]>([])
+
+  useEffect(() => {
+    const nextReps = Array.from({ length: setCount }, (_, i) => repsArray[i] ?? repsArray[0] ?? '')
+    const nextWeights = Array.from({ length: setCount }, (_, i) => {
+      const value = setWeightsArray[i]
+      if (typeof value === 'number' && value > 0) return String(value)
+
+      const basePercent = percentArray[i] ?? percentArray[0]
+      const effectivePercent =
+        typeof basePercent === 'number'
+          ? getEffectivePercent(basePercent, activeReadiness)
+          : undefined
+      const derivedWeight =
+        oneRepMax && effectivePercent !== undefined
+          ? Math.round((effectivePercent / 100) * oneRepMax)
+          : undefined
+
+      return typeof derivedWeight === 'number' && derivedWeight > 0 ? String(derivedWeight) : ''
+    })
+    const nextStatuses = Array.from({ length: setCount }, (_, i) => setStatusesArray[i] ?? 'pending')
+    const nextPercents = percentArray.length > 0
+      ? Array.from({ length: setCount }, (_, i) => {
+          const value = percentArray[i] ?? percentArray[0]
+          return typeof value === 'number' ? value : 0
+        })
+      : []
+
+    setRepsBySet(nextReps)
+    setWeightsBySet(nextWeights)
+    setStatusesBySet(nextStatuses)
+    setPercentBySet(nextPercents)
+  }, [exercise.exerciseNumber, exercise.reps, exercise.percent, exercise.setWeights, exercise.setStatuses, exercise.sets])
+
+  const buildSetWeights = (values: string[]) => {
+    const parsed = values.map((value) => {
+      const normalized = value.trim()
+      if (!normalized) return null
+      const next = Number(normalized)
+      if (!Number.isFinite(next)) return null
+      return next
+    })
+
+    let lastIndex = -1
+    parsed.forEach((value, index) => {
+      if (typeof value === 'number') lastIndex = index
+    })
+
+    if (lastIndex < 0) return undefined
+
+    return Array.from({ length: lastIndex + 1 }, (_, i) => {
+      const value = parsed[i]
+      return typeof value === 'number' ? value : 0
+    })
+  }
+
+  const getHeaviestNonMissWeight = (weights: string[], statuses: SetStatus[]) => {
+    const eligibleWeights = weights
+      .map((value, index) => {
+        const weight = Number(value)
+        if (!Number.isFinite(weight) || weight <= 0) return null
+        if (statuses[index] === 'miss') return null
+        return weight
+      })
+      .filter((value): value is number => typeof value === 'number')
+
+    return eligibleWeights.length > 0 ? Math.max(...eligibleWeights) : undefined
+  }
+
+  const areAllSetsResolved = (statuses: SetStatus[]) => {
+    if (setCount <= 0) return false
+    return Array.from({ length: setCount }, (_, index) => statuses[index] ?? 'pending')
+      .every((status) => status !== 'pending')
+  }
+
+  const persistSets = async (next: {
+    reps?: string[]
+    weights?: string[]
+    statuses?: SetStatus[]
+    percents?: number[]
+    includePercent?: boolean
+  }) => {
+    const repsToSave = next.reps ?? repsBySet
+    const weightsToSave = buildSetWeights(next.weights ?? weightsBySet)
+    const statusesToSave = next.statuses ?? statusesBySet
+    const percentToSave = next.includePercent ? (next.percents ?? percentBySet) : undefined
+
+    await onUpdateSets({
+      programId,
+      weekNumber,
+      dayNumber,
+      exerciseNumber: exercise.exerciseNumber,
+      reps: repsToSave,
+      percent: percentToSave,
+      setWeights: weightsToSave,
+      setStatuses: statusesToSave,
+      sets: repsToSave.length,
+    })
+  }
+
   const sets = Array.from({ length: setCount }, (_, i) => {
-    const reps = repsArray[i] ?? repsArray[0] ?? ''
-    const basePercent = percentArray[i] ?? percentArray[0]
+    const reps = repsBySet[i] ?? ''
+    const basePercent = percentBySet[i] ?? percentBySet[0]
     const effectivePercent =
-      typeof basePercent === 'number'
+      typeof basePercent === 'number' && basePercent > 0
         ? getEffectivePercent(basePercent, activeReadiness)
         : undefined
-    const weight =
-      oneRepMax && effectivePercent !== undefined
-        ? Math.round((effectivePercent / 100) * oneRepMax)
+    const weightValue = weightsBySet[i]?.trim()
+    const weight = weightValue ? Number(weightValue) : undefined
+    const derivedPercent =
+      typeof weight === 'number' && Number.isFinite(weight) && weight > 0 && oneRepMax
+        ? Math.round((weight / oneRepMax) * 100)
         : undefined
 
-    return { reps, effectivePercent, weight, index: i }
+    return {
+      reps,
+      effectivePercent,
+      weight,
+      derivedPercent,
+      status: statusesBySet[i] ?? 'pending',
+      index: i,
+    }
   })
+
+  useEffect(() => {
+    if (exercise.completed) return
+    if (!areAllSetsResolved(statusesBySet)) return
+
+    const heaviest = getHeaviestNonMissWeight(weightsBySet, statusesBySet)
+    onToggle(exercise.exerciseNumber, false, heaviest)
+  }, [exercise.completed, exercise.exerciseNumber, statusesBySet, weightsBySet, setCount])
 
   return (
     <Animated.View
@@ -593,7 +771,25 @@ const ExerciseCard = ({ exercise, index, prs, activeReadiness, onToggle, colors,
     >
       {/* Exercise header */}
       <Pressable
-        onPress={() => onToggle(exercise.exerciseNumber, exercise.completed)}
+        onPress={() => {
+          const nextCompleted = !exercise.completed
+          if (!nextCompleted) {
+            onToggle(exercise.exerciseNumber, exercise.completed)
+            return
+          }
+
+          const eligibleWeights = weightsBySet
+            .map((value, index) => {
+              const weight = Number(value)
+              if (!Number.isFinite(weight) || weight <= 0) return null
+              if (statusesBySet[index] === 'miss') return null
+              return weight
+            })
+            .filter((value): value is number => typeof value === 'number')
+
+          const heaviest = eligibleWeights.length > 0 ? Math.max(...eligibleWeights) : undefined
+          onToggle(exercise.exerciseNumber, exercise.completed, heaviest)
+        }}
         style={{
           flexDirection: 'row',
           alignItems: 'center',
@@ -692,7 +888,7 @@ const ExerciseCard = ({ exercise, index, prs, activeReadiness, onToggle, colors,
               borderRadius: 10,
               borderCurve: 'continuous',
               backgroundColor: colors.setRowBg,
-              gap: 10,
+              gap: 8,
             }}
           >
             {/* Set number */}
@@ -713,30 +909,64 @@ const ExerciseCard = ({ exercise, index, prs, activeReadiness, onToggle, colors,
             </View>
 
             {/* Reps */}
-            <Text style={{ color: colors.text, fontSize: 15, fontWeight: '600', fontVariant: ['tabular-nums'] }}>
-              {set.reps} {set.reps === '1' ? 'rep' : 'reps'}
-            </Text>
+            <TextInput
+              value={repsBySet[set.index] ?? ''}
+              onChangeText={(value) => {
+                setRepsBySet((prev) => {
+                  const next = [...prev]
+                  next[set.index] = value
+                  return next
+                })
+              }}
+              onEndEditing={() => {
+                const nextReps = [...repsBySet]
+                persistSets({ reps: nextReps })
+              }}
+              placeholder="Reps"
+              placeholderTextColor={colors.textTertiary}
+              style={{
+                color: colors.text,
+                fontSize: 15,
+                fontWeight: '600',
+                fontVariant: ['tabular-nums'],
+                width: 40,
+                textAlign: 'center',
+              }}
+            />
 
             {/* Weight or percent */}
-            {(set.weight !== undefined || set.effectivePercent !== undefined) && (
-              <>
-                <Text style={{ color: colors.textTertiary, fontSize: 13 }}>@</Text>
-                <Text
-                  selectable
-                  style={{
-                    color: colors.accent,
-                    fontSize: 15,
-                    fontWeight: '700',
-                    fontVariant: ['tabular-nums'],
-                  }}
-                >
-                  {set.weight !== undefined ? `${set.weight} kg` : `${set.effectivePercent}%`}
-                </Text>
-              </>
-            )}
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <Text style={{ color: colors.textTertiary, fontSize: 13 }}>@</Text>
+              <TextInput
+                value={weightsBySet[set.index] ?? ''}
+                onChangeText={(value) => {
+                  setWeightsBySet((prev) => {
+                    const next = [...prev]
+                    next[set.index] = value
+                    return next
+                  })
+                }}
+                onEndEditing={() => {
+                  const nextWeights = [...weightsBySet]
+                  persistSets({ weights: nextWeights })
+                }}
+                placeholder="Weight"
+                placeholderTextColor={colors.textTertiary}
+                keyboardType="numeric"
+                style={{
+                  color: colors.accent,
+                  fontSize: 15,
+                  fontWeight: '700',
+                  fontVariant: ['tabular-nums'],
+                  width: 50,
+                  textAlign: 'center',
+                }}
+              />
+              <Text style={{ color: colors.accent, fontSize: 15, fontWeight: '700' }}>kg</Text>
+            </View>
 
-            {/* Effective percent, right-aligned */}
-            {set.effectivePercent !== undefined && (
+            {/* Percent, right-aligned */}
+            {(set.derivedPercent !== undefined || set.effectivePercent !== undefined) && (
               <>
                 <View style={{ flex: 1 }} />
                 <Text
@@ -745,14 +975,146 @@ const ExerciseCard = ({ exercise, index, prs, activeReadiness, onToggle, colors,
                     fontSize: 15,
                     fontWeight: '500',
                     fontVariant: ['tabular-nums'],
+                    width: 52,
+                    textAlign: 'right',
                   }}
                 >
-                  {set.effectivePercent}%
+                  {set.derivedPercent ?? set.effectivePercent}%
                 </Text>
               </>
             )}
+
+            {/* Status toggle */}
+            <Pressable
+              onPress={() => {
+                const nextStatus: SetStatus =
+                  set.status === 'pending' ? 'complete' : set.status === 'complete' ? 'miss' : 'pending'
+                const nextStatuses = [...statusesBySet]
+                nextStatuses[set.index] = nextStatus
+                setStatusesBySet(nextStatuses)
+                persistSets({ statuses: nextStatuses })
+              }}
+              style={{
+                width: 28,
+                height: 24,
+                alignItems: 'center',
+                justifyContent: 'center',
+                borderRadius: 8,
+                borderCurve: 'continuous',
+                backgroundColor:
+                  set.status === 'complete'
+                    ? `${colors.green}20`
+                    : set.status === 'miss'
+                      ? (isDark ? '#FF453A20' : '#FF3B3020')
+                      : colors.cardSecondary,
+              }}
+            >
+              {Platform.OS === 'ios' ? (
+                <SymbolView
+                  name={
+                    set.status === 'complete'
+                      ? 'checkmark'
+                      : set.status === 'miss'
+                        ? 'xmark'
+                        : 'circle'
+                  }
+                  tintColor={
+                    set.status === 'complete'
+                      ? colors.green
+                      : set.status === 'miss'
+                        ? (isDark ? '#FF453A' : '#FF3B30')
+                        : colors.textSecondary
+                  }
+                  size={14}
+                  weight="bold"
+                />
+              ) : (
+                <Text
+                  style={{
+                    color:
+                      set.status === 'complete'
+                        ? colors.green
+                        : set.status === 'miss'
+                          ? (isDark ? '#FF453A' : '#FF3B30')
+                          : colors.textSecondary,
+                    fontSize: 12,
+                    fontWeight: '800',
+                  }}
+                >
+                  {set.status === 'complete' ? '✓' : set.status === 'miss' ? '✕' : '○'}
+                </Text>
+              )}
+            </Pressable>
           </View>
         ))}
+
+        {/* Add/remove set */}
+        <View style={{ flexDirection: 'row', gap: 8, marginTop: 6, alignItems: 'center', justifyContent: 'center' }}>
+          <Pressable
+            onPress={() => {
+              if (repsBySet.length <= 1) return
+              const nextReps = repsBySet.slice(0, -1)
+              const nextWeights = weightsBySet.slice(0, -1)
+              const nextStatuses = statusesBySet.slice(0, -1)
+              const nextPercents = percentBySet.slice(0, -1)
+
+              setRepsBySet(nextReps)
+              setWeightsBySet(nextWeights)
+              setStatusesBySet(nextStatuses)
+              setPercentBySet(nextPercents)
+              persistSets({
+                reps: nextReps,
+                weights: nextWeights,
+                statuses: nextStatuses,
+                percents: nextPercents,
+                includePercent: nextPercents.length > 0,
+              })
+            }}
+            style={{
+              paddingHorizontal: 12,
+              paddingVertical: 8,
+              borderRadius: 10,
+              borderCurve: 'continuous',
+              backgroundColor: isDark ? '#2C2C2E' : '#E8E8ED',
+              opacity: repsBySet.length <= 1 ? 0.5 : 1,
+            }}
+          >
+            <Text style={{ color: colors.text, fontSize: 13, fontWeight: '700' }}>- Set</Text>
+          </Pressable>
+          
+          <Pressable
+            onPress={() => {
+              const nextReps = [...repsBySet, repsBySet[repsBySet.length - 1] ?? '']
+              const nextWeights = [...weightsBySet, weightsBySet[weightsBySet.length - 1] ?? '']
+              const nextStatuses = [...statusesBySet, 'pending']
+              const nextPercents = [...percentBySet]
+              if (percentBySet.length > 0) {
+                nextPercents.push(percentBySet[percentBySet.length - 1])
+              }
+
+              setRepsBySet(nextReps)
+              setWeightsBySet(nextWeights)
+              setStatusesBySet(nextStatuses)
+              setPercentBySet(nextPercents)
+              persistSets({
+                reps: nextReps,
+                weights: nextWeights,
+                statuses: nextStatuses,
+                percents: nextPercents,
+                includePercent: nextPercents.length > 0,
+              })
+            }}
+            style={{
+              paddingHorizontal: 12,
+              paddingVertical: 8,
+              borderRadius: 10,
+              borderCurve: 'continuous',
+              backgroundColor: isDark ? '#2C2C2E' : '#E8E8ED',
+            }}
+          >
+            <Text style={{ color: colors.text, fontSize: 13, fontWeight: '700' }}>+ Set</Text>
+          </Pressable>
+        </View>
       </View>
     </Animated.View>
   )
