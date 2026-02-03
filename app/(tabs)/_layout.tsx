@@ -34,6 +34,13 @@ const Layout = () => {
               />
               {Platform.OS === 'android' ? <Label>Progress</Label> : <Label hidden /> }
           </NativeTabs.Trigger>
+          <NativeTabs.Trigger name="exercise-library">
+              <Icon
+              sf={{ default: 'list.bullet.rectangle', selected: 'list.bullet.rectangle.fill' }}
+              androidSrc={<VectorIcon family={MaterialCommunityIcons} name="dumbbell" />}
+              />
+              {Platform.OS === 'android' ? <Label>Library</Label> : <Label hidden /> }
+          </NativeTabs.Trigger>
           {/* <NativeTabs.Trigger name="history">
               <Icon
               sf={{ default: 'clock.arrow.trianglehead.counterclockwise.rotate.90', selected: 'clock.arrow.trianglehead.counterclockwise.rotate.90' }}
