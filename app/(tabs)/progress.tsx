@@ -33,6 +33,9 @@ const LIFT_CARDS: { label: Lifts; value: LiftName; category: LiftCategory }[] = 
   { label: "Front Squat", value: "front_squat", category: "strength" },
 ]
 
+const normalizeExerciseName = (value: string) =>
+  value.toLowerCase().trim().replace(/\s+/g, " ");
+
 const Progress = () => {
   const [chipSelected, setChipSelected] = useState("all")
 
@@ -40,8 +43,21 @@ const Progress = () => {
     athleteName: 'maddisen'
   })
 
+  const recentBests = useQuery(api.programs.getRecentBestsForAthlete, {
+    athleteName: 'maddisen',
+  })
+
   const getOneRm = (p: GroupedPRs | undefined, lift: LiftName): number =>
     p?.[lift]?.["1rm"] ?? 0;
+
+  const getRecentBest = (
+    recent: Record<string, number> | undefined,
+    liftLabel: string
+  ): number => {
+    if (!recent) return 0
+    const key = normalizeExerciseName(liftLabel)
+    return recent[key] ?? 0
+  }
 
   const handleChipPressed = (filter: SelectedChip) => {
       setChipSelected(filter)
@@ -72,7 +88,12 @@ const Progress = () => {
 
       {prData ? (
         filteredCards.map(({ label, value }) => (
-          <ProgressCard key={value} exerciseName={label} recentBest={120} pr={getOneRm(prData, value)} />
+          <ProgressCard
+            key={value}
+            exerciseName={label}
+            recentBest={getRecentBest(recentBests, label)}
+            pr={getOneRm(prData, value)}
+          />
         ))
       ) : (
         <ProgressCard exerciseName="No PRs Found" recentBest={0} pr={0}/>

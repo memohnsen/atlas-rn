@@ -1,6 +1,9 @@
 import { v } from "convex/values";
 import { query, mutation } from "./_generated/server";
 
+const normalizeExerciseName = (value: string) =>
+  value.toLowerCase().trim().replace(/\s+/g, " ");
+
 // Get all unique athletes for a user
 export const getAthletes = query({
   args: {
@@ -97,6 +100,46 @@ export const getWorkoutsForAnalytics = query({
     );
 
     return workouts;
+  },
+});
+
+// Get recent bests (heaviest weight in last 3 months) for an athlete
+export const getRecentBestsForAthlete = query({
+  args: {
+    athleteName: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const programs = await ctx.db
+      .query("programs")
+      .withIndex("by_athlete", (q) => q.eq("athleteName", args.athleteName))
+      .collect();
+
+    const cutoffDate = new Date();
+    cutoffDate.setMonth(cutoffDate.getMonth() - 3);
+    const cutoffTimestamp = cutoffDate.getTime();
+
+    const bests: Record<string, number> = {};
+
+    programs.forEach((program) => {
+      program.weeks.forEach((week) => {
+        week.days.forEach((day) => {
+          if (!day.completed || !day.completedAt) return;
+          if (day.completedAt < cutoffTimestamp) return;
+
+          day.exercises.forEach((exercise) => {
+            if (!exercise.completed) return;
+            if (typeof exercise.weights !== "number") return;
+            const normalizedName = normalizeExerciseName(exercise.exerciseName);
+            const currentBest = bests[normalizedName];
+            if (currentBest === undefined || exercise.weights > currentBest) {
+              bests[normalizedName] = exercise.weights;
+            }
+          });
+        });
+      });
+    });
+
+    return bests;
   },
 });
 
@@ -435,6 +478,7 @@ export const markExerciseComplete = mutation({
     dayNumber: v.number(),
     exerciseNumber: v.number(),
     completed: v.boolean(),
+    weight: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     const program = await ctx.db.get(args.programId);
@@ -456,6 +500,10 @@ export const markExerciseComplete = mutation({
               return {
                 ...ex,
                 completed: args.completed,
+                weights:
+                  args.completed && typeof args.weight === "number"
+                    ? args.weight
+                    : ex.weights,
               };
             }),
           };
