@@ -65,7 +65,7 @@ const WorkoutCard = ({ program, selectedDate }: WorkoutCardProps) => {
                         <Text className='text-text-title font-bold text-xl'>
                             {currentDay ? `Week ${currentWeek} - Day ${currentDay.dayNumber}` : 'Rest Day'}
                         </Text>
-                        <Text className='text-gray-500 text-md mt-1'>{program.programName.toUpperCase()}</Text>
+                        <Text className='text-gray-500 text-md mt-1'>{program.programName.trim().split(' ').map(word => word[0].toUpperCase() + word.slice(1)).join(' ')}</Text>
                     </View>
                     <View className='flex-row gap-x-2'>
                         <LiquidGlassButton icon={currentDay?.completed ? 'checkmark' : 'play'} iconSize={24} height={40} width={40} iconColor='green' onPress={handlePlayPress} />

@@ -5,7 +5,7 @@ import { GroupedPRs, LiftName } from '@/types/prs'
 import { useQuery } from 'convex/react'
 import { Chip } from 'heroui-native'
 import { useState } from 'react'
-import { Platform, ScrollView, View } from 'react-native'
+import { FlatList, View } from 'react-native'
 
 
 // add other rep maxes later
@@ -66,43 +66,49 @@ const Progress = () => {
   const filteredCards = LIFT_CARDS.filter(
     (card) => chipSelected === "all" || card.category === chipSelected
   )
-  
+
   return (
-    <ScrollView className='flex-1 p-5 bg-background' contentContainerStyle={{ paddingBottom: 20 }}>
-      {Platform.OS === 'android' && <View className='h-20' />}
-      <Header title="Lifting Progress" subtitle="Track your personal records" />
+    <View className='flex-1 bg-background'>
+      <FlatList
+        data={filteredCards}
+        keyExtractor={(item) => item.value}
+        contentContainerStyle={{ paddingBottom: 100 }}
+        ListHeaderComponent={
+          <View className='px-5 pt-16'>
+            <Header title="Lifting Progress" subtitle="Track your personal records" />
 
-      <View className='flex-row gap-2 mt-6'>
-        {FILTER_CHIPS.map(({ label, value }) => (
-          <Chip
-            key={value}
-            variant={chipSelected === value ? "primary" : "soft"}
-            size="lg"
-            className="h-8"
-            onPress={() => handleChipPressed(value)}
-          >
-            <Chip.Label>{label}</Chip.Label>
-          </Chip>
-        ))}
-      </View>
-
-      {prData ? (
-        filteredCards.map(({ label, value }) => (
-          <ProgressCard
-            key={value}
-            exerciseName={label}
-            recentBest={getRecentBest(recentBests, label)}
-            pr={getOneRm(prData, value)}
-          />
-        ))
-      ) : (
-        <ProgressCard exerciseName="No PRs Found" recentBest={0} pr={0}/>
-      )}
-
-      {Platform.OS === 'android' &&
-         <View style={{ height: 120 }} /> 
-      }
-    </ScrollView>
+            <View className='flex-row gap-2 mt-6'>
+              {FILTER_CHIPS.map(({ label, value }) => (
+                <Chip
+                  key={value}
+                  variant={chipSelected === value ? "primary" : "soft"}
+                  size="lg"
+                  className="h-8"
+                  onPress={() => handleChipPressed(value)}
+                >
+                  <Chip.Label>{label}</Chip.Label>
+                </Chip>
+              ))}
+            </View>
+          </View>
+        }
+        renderItem={({ item: { label, value } }) =>
+          prData ? (
+            <View className='px-5'>
+              <ProgressCard
+                exerciseName={label}
+                recentBest={getRecentBest(recentBests, label)}
+                pr={getOneRm(prData, value)}
+              />
+            </View>
+          ) : (
+            <View className='px-5'>
+              <ProgressCard exerciseName="No PRs Found" recentBest={0} pr={0} />
+            </View>
+          )
+        }
+      />
+    </View>
   )
 }
 

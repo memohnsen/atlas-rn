@@ -82,7 +82,7 @@ const ExerciseLibrary = () => {
       <FlatList
         data={filteredExercises}
         keyExtractor={(exercise) => `${exercise._id}`}
-        contentContainerStyle={{ paddingBottom: 24 }}
+        contentContainerStyle={{ paddingBottom: 100 }}
         ListHeaderComponent={
           <View className='px-5 pt-16'>
             <Header title="Exercise Library" subtitle={subtitle} />

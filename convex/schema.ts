@@ -143,6 +143,14 @@ export default defineSchema({
     .index("by_athlete_exercise", ["athleteName", "exerciseName"])
     .index("by_athlete_exercise_rep", ["athleteName", "exerciseName", "repMax"]),
 
+  // Athlete Meets table - upcoming competition info
+  athleteMeets: defineTable({
+    athleteName: v.string(),
+    meetName: v.string(),
+    meetDate: v.string(), // ISO date (YYYY-MM-DD)
+  })
+    .index("by_athlete", ["athleteName"]),
+
   // Exercise Library table
   exerciseLibrary: defineTable({
     name: v.string(),
