@@ -1,4 +1,5 @@
 import { useCoach } from '@/components/CoachProvider'
+import { useUnit } from '@/components/UnitProvider'
 import { api } from '@/convex/_generated/api'
 import { Id } from '@/convex/_generated/dataModel'
 import { DayRating, Exercise, Program } from '@/types/program'
@@ -79,6 +80,7 @@ const TrainingLog = () => {
   const flatListRef = useRef<FlatList>(null)
   const { isSignedIn } = useAuth()
   const { coachEnabled, selectedAthlete } = useCoach()
+  const { weightUnit } = useUnit()
 
   // ─── Data ──────────────────────────────────────────────
 
@@ -235,6 +237,22 @@ const TrainingLog = () => {
   const totalExercises = currentDay.exercises.length
   const completedExercises = currentDay.exercises.filter((e) => e.completed).length
 
+  const toDisplayWeight = (value: number | undefined) => {
+    if (typeof value !== 'number') return ''
+    const factor = weightUnit === 'lb' ? 2.2 : 1
+    const converted = value * factor
+    const rounded = weightUnit === 'lb'
+      ? Math.round(converted / 5) * 5
+      : Math.round(converted * 10) / 10
+    return String(rounded)
+  }
+
+  const toStorageWeight = (value: number) => {
+    const factor = weightUnit === 'lb' ? 2.2 : 1
+    const normalized = weightUnit === 'lb' ? Math.round(value / 5) * 5 : value
+    return Math.round((normalized / factor) * 10) / 10
+  }
+
   // ─── Colors ────────────────────────────────────────────
 
   const colors = {
@@ -367,6 +385,9 @@ const TrainingLog = () => {
                 colors={colors}
                 isDark={isDark}
                 coachEnabled={coachEnabled}
+                weightUnit={weightUnit}
+                toDisplayWeight={toDisplayWeight}
+                toStorageWeight={toStorageWeight}
               />
             )
           }
@@ -575,6 +596,9 @@ interface ExerciseGroupPageProps {
   colors: Record<string, string>
   isDark: boolean
   coachEnabled: boolean
+  weightUnit: 'kg' | 'lb'
+  toDisplayWeight: (value: number | undefined) => string
+  toStorageWeight: (value: number) => number
 }
 
 const ExerciseGroupPage = ({
@@ -592,6 +616,9 @@ const ExerciseGroupPage = ({
   colors,
   isDark,
   coachEnabled,
+  weightUnit,
+  toDisplayWeight,
+  toStorageWeight,
 }: ExerciseGroupPageProps) => {
   return (
     <View style={{ width: screenWidth }}>
@@ -645,6 +672,9 @@ const ExerciseGroupPage = ({
             colors={colors}
             isDark={isDark}
             coachEnabled={coachEnabled}
+            weightUnit={weightUnit}
+            toDisplayWeight={toDisplayWeight}
+            toStorageWeight={toStorageWeight}
           />
         )}
         ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
@@ -675,6 +705,9 @@ interface ExerciseCardProps {
   colors: Record<string, string>
   isDark: boolean
   coachEnabled: boolean
+  weightUnit: 'kg' | 'lb'
+  toDisplayWeight: (value: number | undefined) => string
+  toStorageWeight: (value: number) => number
 }
 
 const ExerciseCard = ({
@@ -691,6 +724,9 @@ const ExerciseCard = ({
   colors,
   isDark,
   coachEnabled,
+  weightUnit,
+  toDisplayWeight,
+  toStorageWeight,
 }: ExerciseCardProps) => {
   const repsArray = Array.isArray(exercise.reps) ? exercise.reps : [exercise.reps]
   const percentArray = Array.isArray(exercise.percent)
@@ -724,7 +760,7 @@ const ExerciseCard = ({
     const nextReps = Array.from({ length: setCount }, (_, i) => repsArray[i] ?? repsArray[0] ?? '')
     const nextWeights = Array.from({ length: setCount }, (_, i) => {
       const value = setWeightsArray[i]
-      if (typeof value === 'number' && value > 0) return String(value)
+      if (typeof value === 'number' && value > 0) return toDisplayWeight(value)
 
       const basePercent = percentArray[i] ?? percentArray[0]
       const effectivePercent =
@@ -736,7 +772,7 @@ const ExerciseCard = ({
           ? Math.round((effectivePercent / 100) * oneRepMax)
           : undefined
 
-      return typeof derivedWeight === 'number' && derivedWeight > 0 ? String(derivedWeight) : ''
+      return typeof derivedWeight === 'number' && derivedWeight > 0 ? toDisplayWeight(derivedWeight) : ''
     })
     const nextStatuses = Array.from({ length: setCount }, (_, i) => setStatusesArray[i] ?? 'pending')
     const nextPercents = Array.from({ length: setCount }, (_, i) => {
@@ -758,7 +794,7 @@ const ExerciseCard = ({
       if (!normalized) return null
       const next = Number(normalized)
       if (!Number.isFinite(next)) return null
-      return next
+      return toStorageWeight(next)
     })
 
     let lastIndex = -1
@@ -780,7 +816,7 @@ const ExerciseCard = ({
         const weight = Number(value)
         if (!Number.isFinite(weight) || weight <= 0) return null
         if (statuses[index] === 'miss') return null
-        return weight
+        return toStorageWeight(weight)
       })
       .filter((value): value is number => typeof value === 'number')
 
@@ -830,9 +866,13 @@ const ExerciseCard = ({
         : undefined
     const weightValue = weightsBySet[i]?.trim()
     const weight = weightValue ? Number(weightValue) : undefined
+    const weightInKg =
+      typeof weight === 'number' && Number.isFinite(weight) && weight > 0
+        ? toStorageWeight(weight)
+        : undefined
     const derivedPercent =
-      typeof weight === 'number' && Number.isFinite(weight) && weight > 0 && oneRepMax
-        ? Math.round((weight / oneRepMax) * 100)
+      typeof weightInKg === 'number' && oneRepMax
+        ? Math.round((weightInKg / oneRepMax) * 100)
         : undefined
 
     return {
@@ -877,7 +917,7 @@ const ExerciseCard = ({
               const weight = Number(value)
               if (!Number.isFinite(weight) || weight <= 0) return null
               if (statusesBySet[index] === 'miss') return null
-              return weight
+              return toStorageWeight(weight)
             })
             .filter((value): value is number => typeof value === 'number')
 
@@ -1108,7 +1148,9 @@ const ExerciseCard = ({
                   textAlign: 'center',
                 }}
               />
-              <Text style={{ color: colors.accent, fontSize: 15, fontWeight: '700' }}>kg</Text>
+              <Text style={{ color: colors.accent, fontSize: 15, fontWeight: '700' }}>
+                {weightUnit === 'lb' ? 'lb' : 'kg'}
+              </Text>
             </View>
 
             {/* Percent, right-aligned */}

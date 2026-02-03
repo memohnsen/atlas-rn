@@ -1,16 +1,27 @@
 import { useCoach } from "@/components/CoachProvider";
+import { useUnit } from "@/components/UnitProvider";
+import WeightUnitPickerModal from "@/components/WeightUnitPickerModal";
 import { useAuth } from "@clerk/clerk-expo";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useRouter } from "expo-router";
+import { useState } from "react";
 import { Pressable, SafeAreaView, Switch, Text, View } from "react-native";
 
 const SettingsScreen = () => {
   const { signOut } = useAuth();
   const router = useRouter();
   const { isCoachUser, coachEnabled, setCoachEnabled } = useCoach();
+  const { weightUnit, setWeightUnit } = useUnit();
+  const [unitPickerOpen, setUnitPickerOpen] = useState(false);
 
   return (
     <SafeAreaView className="flex-1 bg-background">
+      <WeightUnitPickerModal
+        visible={unitPickerOpen}
+        selectedUnit={weightUnit}
+        onSelect={setWeightUnit}
+        onClose={() => setUnitPickerOpen(false)}
+      />
       <View className="px-5 pt-4">
         <View className="flex-row items-center justify-between">
           <Pressable
@@ -22,6 +33,24 @@ const SettingsScreen = () => {
           <Text className="text-3xl font-bold text-text-title">Settings</Text>
           <View className="h-9 w-9" />
         </View>
+      </View>
+
+      <View className="mt-6 px-5">
+        <Pressable
+          onPress={() => setUnitPickerOpen(true)}
+          className="flex-row items-center justify-between rounded-2xl bg-card-background px-4 py-3.5"
+        >
+          <View>
+            <Text className="text-base text-text-title">Weight Units</Text>
+            <Text className="text-xs text-gray-500 mt-1">Default is KG</Text>
+          </View>
+          <View className="flex-row items-center" style={{ gap: 6 }}>
+            <Text className="text-text-title text-base font-semibold">
+              {weightUnit === "kg" ? "KG" : "LB"}
+            </Text>
+            <Ionicons name="chevron-down" size={18} color="#6C6C70" />
+          </View>
+        </Pressable>
       </View>
 
       {isCoachUser && (

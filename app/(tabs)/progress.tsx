@@ -1,5 +1,6 @@
 import AthletePickerModal from '@/components/AthletePickerModal'
 import { useCoach } from '@/components/CoachProvider'
+import { useUnit } from '@/components/UnitProvider'
 import Header from '@/components/Header'
 import ProgressCard from '@/components/ProgressCard'
 import { api } from '@/convex/_generated/api'
@@ -43,6 +44,7 @@ const Progress = () => {
   const [chipSelected, setChipSelected] = useState("all")
   const { isSignedIn } = useAuth()
   const { coachEnabled, selectedAthlete, setSelectedAthlete, athletes } = useCoach()
+  const { weightUnit } = useUnit()
   const [pickerOpen, setPickerOpen] = useState(false)
 
   const prData = useQuery(
@@ -59,8 +61,17 @@ const Progress = () => {
       : 'skip'
   )
 
+  const toDisplayWeight = (value: number): number => {
+    if (!value) return 0
+    const factor = weightUnit === 'lb' ? 2.2 : 1
+    const converted = value * factor
+    return weightUnit === 'lb'
+      ? Math.round(converted)
+      : Math.round(converted * 10) / 10
+  }
+
   const getOneRm = (p: GroupedPRs | undefined, lift: LiftName): number =>
-    p?.[lift]?.["1rm"] ?? 0;
+    toDisplayWeight(p?.[lift]?.["1rm"] ?? 0);
 
   const getRecentBest = (
     recent: Record<string, number> | undefined,
@@ -68,7 +79,7 @@ const Progress = () => {
   ): number => {
     if (!recent) return 0
     const key = normalizeExerciseName(liftLabel)
-    return recent[key] ?? 0
+    return toDisplayWeight(recent[key] ?? 0)
   }
 
   const handleChipPressed = (filter: SelectedChip) => {
@@ -132,11 +143,12 @@ const Progress = () => {
                 exerciseName={label}
                 recentBest={getRecentBest(recentBests, label)}
                 pr={getOneRm(prData, value)}
+                unit={weightUnit}
               />
             </View>
           ) : (
             <View className='px-5'>
-              <ProgressCard exerciseName="No PRs Found" recentBest={0} pr={0} />
+              <ProgressCard exerciseName="No PRs Found" recentBest={0} pr={0} unit={weightUnit} />
             </View>
           )
         }

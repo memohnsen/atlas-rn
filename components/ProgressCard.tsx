@@ -7,9 +7,11 @@ interface ProgressCardProps {
   exerciseName: string
   recentBest: number
   pr: number
+  unit: 'kg' | 'lb'
 }
 
-const ProgressCard = ({ exerciseName, recentBest, pr }: ProgressCardProps) => {
+const ProgressCard = ({ exerciseName, recentBest, pr, unit }: ProgressCardProps) => {
+  const unitLabel = unit === 'lb' ? 'lbs' : 'kg'
   return (
     <Card className='mt-4 bg-card-background'>
         <Card.Body>
@@ -23,8 +25,8 @@ const ProgressCard = ({ exerciseName, recentBest, pr }: ProgressCardProps) => {
             <Card.Description className='mt-2'>PR</Card.Description>
           </View>
           <View className='flex-row justify-between'>
-            <Card.Title className='mb-2 text-2xl font-bold text-blue-energy'>{recentBest}kg</Card.Title>
-            <Card.Title className='mb-2 text-2xl font-bold'>{pr}kg</Card.Title>
+            <Card.Title className='mb-2 text-2xl font-bold text-blue-energy'>{recentBest}{unitLabel}</Card.Title>
+            <Card.Title className='mb-2 text-2xl font-bold'>{pr}{unitLabel}</Card.Title>
           </View>
         </Card.Body>
       </Card>

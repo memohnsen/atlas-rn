@@ -8,6 +8,7 @@ import { ConvexProviderWithClerk } from "convex/react-clerk";
 import * as SecureStore from "expo-secure-store";
 import "../global.css";
 import { CoachProvider } from "@/components/CoachProvider";
+import { UnitProvider } from "@/components/UnitProvider";
 
 const convex = new ConvexReactClient(process.env.EXPO_PUBLIC_CONVEX_URL!);
 const publishableKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY!;
@@ -85,11 +86,13 @@ export default function RootLayout() {
       <ClerkProvider publishableKey={publishableKey} tokenCache={tokenCache}>
         <ConvexProviderWithClerk client={convex} useAuth={useAuth}>
           <HeroUINativeProvider>
-            <CoachProvider>
-              <AuthGate>
-                <RootStack />
-              </AuthGate>
-            </CoachProvider>
+            <UnitProvider>
+              <CoachProvider>
+                <AuthGate>
+                  <RootStack />
+                </AuthGate>
+              </CoachProvider>
+            </UnitProvider>
           </HeroUINativeProvider>
         </ConvexProviderWithClerk>
       </ClerkProvider>
