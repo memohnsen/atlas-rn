@@ -87,7 +87,13 @@ export default defineSchema({
     .index("by_user", ["userId"])
     .index("by_athlete", ["athleteName"])
     .index("by_user_athlete", ["userId", "athleteName"])
-    .index("by_athlete_program", ["athleteName", "programName", "startDate"]),
+    .index("by_athlete_program", ["athleteName", "programName", "startDate"])
+    .index("by_user_athlete_program", [
+      "userId",
+      "athleteName",
+      "programName",
+      "startDate",
+    ]),
 
   // Program Templates table - consolidates program_library_workouts + program_library_templates
   programTemplates: defineTable({
@@ -143,23 +149,32 @@ export default defineSchema({
 
   // Athlete PRs table - normalized structure (replaces 34-column denormalized table)
   athletePRs: defineTable({
+    userId: v.string(),
     athleteName: v.string(), // Globally unique athlete names
     exerciseName: v.string(), // "snatch", "clean", "back_squat", etc.
     repMax: v.number(), // 1, 2, 3, 5, 10
     weight: v.number(), // The PR weight
     recordedAt: v.optional(v.number()), // When this PR was set
   })
-    .index("by_athlete", ["athleteName"])
-    .index("by_athlete_exercise", ["athleteName", "exerciseName"])
-    .index("by_athlete_exercise_rep", ["athleteName", "exerciseName", "repMax"]),
+    .index("by_user", ["userId"])
+    .index("by_user_athlete", ["userId", "athleteName"])
+    .index("by_user_athlete_exercise", ["userId", "athleteName", "exerciseName"])
+    .index("by_user_athlete_exercise_rep", [
+      "userId",
+      "athleteName",
+      "exerciseName",
+      "repMax",
+    ]),
 
   // Athlete Meets table - upcoming competition info
   athleteMeets: defineTable({
+    userId: v.string(),
     athleteName: v.string(),
     meetName: v.string(),
     meetDate: v.string(), // ISO date (YYYY-MM-DD)
   })
-    .index("by_athlete", ["athleteName"]),
+    .index("by_user", ["userId"])
+    .index("by_user_athlete", ["userId", "athleteName"]),
 
   // Exercise Library table
   exerciseLibrary: defineTable({

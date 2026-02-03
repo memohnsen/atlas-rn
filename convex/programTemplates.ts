@@ -1,15 +1,15 @@
 import { v } from "convex/values";
 import { query, mutation } from "./_generated/server";
+import { getUserId } from "./auth";
 
 // Get all templates for a user
 export const getTemplates = query({
-  args: {
-    userId: v.string(),
-  },
+  args: {},
   handler: async (ctx, args) => {
+    const userId = await getUserId(ctx);
     const templates = await ctx.db
       .query("programTemplates")
-      .withIndex("by_user", (q) => q.eq("userId", args.userId))
+      .withIndex("by_user", (q) => q.eq("userId", userId))
       .collect();
 
     return templates;
@@ -19,14 +19,14 @@ export const getTemplates = query({
 // Get a specific template
 export const getTemplate = query({
   args: {
-    userId: v.string(),
     programName: v.string(),
   },
   handler: async (ctx, args) => {
+    const userId = await getUserId(ctx);
     const template = await ctx.db
       .query("programTemplates")
       .withIndex("by_user_program", (q) =>
-        q.eq("userId", args.userId).eq("programName", args.programName)
+        q.eq("userId", userId).eq("programName", args.programName)
       )
       .first();
 
@@ -37,14 +37,14 @@ export const getTemplate = query({
 // Check if a template exists
 export const checkTemplateExists = query({
   args: {
-    userId: v.string(),
     programName: v.string(),
   },
   handler: async (ctx, args) => {
+    const userId = await getUserId(ctx);
     const template = await ctx.db
       .query("programTemplates")
       .withIndex("by_user_program", (q) =>
-        q.eq("userId", args.userId).eq("programName", args.programName)
+        q.eq("userId", userId).eq("programName", args.programName)
       )
       .first();
 
@@ -55,7 +55,6 @@ export const checkTemplateExists = query({
 // Save a template (create or update)
 export const saveTemplate = mutation({
   args: {
-    userId: v.string(),
     programName: v.string(),
     weekCount: v.number(),
     repTargets: v.object({
@@ -99,11 +98,12 @@ export const saveTemplate = mutation({
     ),
   },
   handler: async (ctx, args) => {
+    const userId = await getUserId(ctx);
     // Check if template already exists
     const existing = await ctx.db
       .query("programTemplates")
       .withIndex("by_user_program", (q) =>
-        q.eq("userId", args.userId).eq("programName", args.programName)
+        q.eq("userId", userId).eq("programName", args.programName)
       )
       .first();
 
@@ -119,7 +119,7 @@ export const saveTemplate = mutation({
     } else {
       // Create new template
       const templateId = await ctx.db.insert("programTemplates", {
-        userId: args.userId,
+        userId,
         programName: args.programName,
         weekCount: args.weekCount,
         repTargets: args.repTargets,
@@ -134,18 +134,18 @@ export const saveTemplate = mutation({
 // Delete a template
 export const deleteTemplate = mutation({
   args: {
-    userId: v.string(),
     programName: v.string(),
   },
   handler: async (ctx, args) => {
+    const userId = await getUserId(ctx);
     const template = await ctx.db
       .query("programTemplates")
       .withIndex("by_user_program", (q) =>
-        q.eq("userId", args.userId).eq("programName", args.programName)
+        q.eq("userId", userId).eq("programName", args.programName)
       )
       .first();
 
-    if (template && template.userId === args.userId) {
+    if (template && template.userId === userId) {
       await ctx.db.delete(template._id);
       return true;
     }
@@ -157,17 +157,17 @@ export const deleteTemplate = mutation({
 // Assign template to an athlete (creates a new program from template)
 export const assignTemplateToAthlete = mutation({
   args: {
-    userId: v.string(),
     templateName: v.string(),
     athleteName: v.string(),
     programName: v.string(),
     startDate: v.string(),
   },
   handler: async (ctx, args) => {
+    const userId = await getUserId(ctx);
     const template = await ctx.db
       .query("programTemplates")
       .withIndex("by_user_program", (q) =>
-        q.eq("userId", args.userId).eq("programName", args.templateName)
+        q.eq("userId", userId).eq("programName", args.templateName)
       )
       .first();
 
@@ -175,7 +175,7 @@ export const assignTemplateToAthlete = mutation({
 
     // Create program instance from template with completion tracking
     const programId = await ctx.db.insert("programs", {
-      userId: args.userId,
+      userId,
       athleteName: args.athleteName,
       programName: args.programName,
       startDate: args.startDate,

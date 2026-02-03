@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { query, mutation } from "./_generated/server";
+import { getUserId } from "./auth";
 
 // Get all PRs for an athlete (grouped by exercise)
 export const getAthletePRs = query({
@@ -7,9 +8,12 @@ export const getAthletePRs = query({
     athleteName: v.string(),
   },
   handler: async (ctx, args) => {
+    const userId = await getUserId(ctx);
     const prs = await ctx.db
       .query("athletePRs")
-      .withIndex("by_athlete", (q) => q.eq("athleteName", args.athleteName))
+      .withIndex("by_user_athlete", (q) =>
+        q.eq("userId", userId).eq("athleteName", args.athleteName)
+      )
       .collect();
 
     // Group by exercise for easy display
@@ -33,10 +37,14 @@ export const getPRsForExercise = query({
     exerciseName: v.string(),
   },
   handler: async (ctx, args) => {
+    const userId = await getUserId(ctx);
     const prs = await ctx.db
       .query("athletePRs")
-      .withIndex("by_athlete_exercise", (q) =>
-        q.eq("athleteName", args.athleteName).eq("exerciseName", args.exerciseName)
+      .withIndex("by_user_athlete_exercise", (q) =>
+        q
+          .eq("userId", userId)
+          .eq("athleteName", args.athleteName)
+          .eq("exerciseName", args.exerciseName)
       )
       .collect();
 
@@ -53,11 +61,13 @@ export const upsertPR = mutation({
     weight: v.number(),
   },
   handler: async (ctx, args) => {
+    const userId = await getUserId(ctx);
     // Check if PR already exists
     const existing = await ctx.db
       .query("athletePRs")
-      .withIndex("by_athlete_exercise_rep", (q) =>
+      .withIndex("by_user_athlete_exercise_rep", (q) =>
         q
+          .eq("userId", userId)
           .eq("athleteName", args.athleteName)
           .eq("exerciseName", args.exerciseName)
           .eq("repMax", args.repMax)
@@ -74,6 +84,7 @@ export const upsertPR = mutation({
     } else {
       // Create new PR
       const prId = await ctx.db.insert("athletePRs", {
+        userId,
         athleteName: args.athleteName,
         exerciseName: args.exerciseName,
         repMax: args.repMax,
@@ -98,14 +109,16 @@ export const bulkUpsertPRs = mutation({
     ),
   },
   handler: async (ctx, args) => {
+    const userId = await getUserId(ctx);
     const results = [];
 
     for (const pr of args.prs) {
       // Check if PR already exists
       const existing = await ctx.db
         .query("athletePRs")
-        .withIndex("by_athlete_exercise_rep", (q) =>
+        .withIndex("by_user_athlete_exercise_rep", (q) =>
           q
+            .eq("userId", userId)
             .eq("athleteName", args.athleteName)
             .eq("exerciseName", pr.exerciseName)
             .eq("repMax", pr.repMax)
@@ -122,6 +135,7 @@ export const bulkUpsertPRs = mutation({
       } else {
         // Create new PR
         const prId = await ctx.db.insert("athletePRs", {
+          userId,
           athleteName: args.athleteName,
           exerciseName: pr.exerciseName,
           repMax: pr.repMax,
@@ -144,10 +158,12 @@ export const deletePR = mutation({
     repMax: v.number(),
   },
   handler: async (ctx, args) => {
+    const userId = await getUserId(ctx);
     const pr = await ctx.db
       .query("athletePRs")
-      .withIndex("by_athlete_exercise_rep", (q) =>
+      .withIndex("by_user_athlete_exercise_rep", (q) =>
         q
+          .eq("userId", userId)
           .eq("athleteName", args.athleteName)
           .eq("exerciseName", args.exerciseName)
           .eq("repMax", args.repMax)
@@ -169,9 +185,12 @@ export const deleteAllAthletePRs = mutation({
     athleteName: v.string(),
   },
   handler: async (ctx, args) => {
+    const userId = await getUserId(ctx);
     const prs = await ctx.db
       .query("athletePRs")
-      .withIndex("by_athlete", (q) => q.eq("athleteName", args.athleteName))
+      .withIndex("by_user_athlete", (q) =>
+        q.eq("userId", userId).eq("athleteName", args.athleteName)
+      )
       .collect();
 
     for (const pr of prs) {

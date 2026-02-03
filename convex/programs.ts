@@ -1,18 +1,18 @@
 import { v } from "convex/values";
 import { query, mutation } from "./_generated/server";
+import { getUserId } from "./auth";
 
 const normalizeExerciseName = (value: string) =>
   value.toLowerCase().trim().replace(/\s+/g, " ");
 
 // Get all unique athletes for a user
 export const getAthletes = query({
-  args: {
-    userId: v.string(),
-  },
+  args: {},
   handler: async (ctx, args) => {
+    const userId = await getUserId(ctx);
     const programs = await ctx.db
       .query("programs")
-      .withIndex("by_user", (q) => q.eq("userId", args.userId))
+      .withIndex("by_user", (q) => q.eq("userId", userId))
       .collect();
 
     // Get unique athlete names
@@ -24,14 +24,14 @@ export const getAthletes = query({
 // Get all programs for a specific athlete
 export const getProgramsForAthlete = query({
   args: {
-    userId: v.string(),
     athleteName: v.string(),
   },
   handler: async (ctx, args) => {
+    const userId = await getUserId(ctx);
     const programs = await ctx.db
       .query("programs")
       .withIndex("by_user_athlete", (q) =>
-        q.eq("userId", args.userId).eq("athleteName", args.athleteName)
+        q.eq("userId", userId).eq("athleteName", args.athleteName)
       )
       .collect();
 
@@ -47,10 +47,12 @@ export const getAthleteProgram = query({
     startDate: v.string(),
   },
   handler: async (ctx, args) => {
+    const userId = await getUserId(ctx);
     const program = await ctx.db
       .query("programs")
-      .withIndex("by_athlete_program", (q) =>
+      .withIndex("by_user_athlete_program", (q) =>
         q
+          .eq("userId", userId)
           .eq("athleteName", args.athleteName)
           .eq("programName", args.programName)
           .eq("startDate", args.startDate)
@@ -64,15 +66,15 @@ export const getAthleteProgram = query({
 // Get flattened workouts for analytics
 export const getWorkoutsForAnalytics = query({
   args: {
-    userId: v.string(),
     athleteName: v.string(),
     programName: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    const userId = await getUserId(ctx);
     let query = ctx.db
       .query("programs")
       .withIndex("by_user_athlete", (q) =>
-        q.eq("userId", args.userId).eq("athleteName", args.athleteName)
+        q.eq("userId", userId).eq("athleteName", args.athleteName)
       );
 
     const programs = await query.collect();
@@ -109,9 +111,12 @@ export const getRecentBestsForAthlete = query({
     athleteName: v.string(),
   },
   handler: async (ctx, args) => {
+    const userId = await getUserId(ctx);
     const programs = await ctx.db
       .query("programs")
-      .withIndex("by_athlete", (q) => q.eq("athleteName", args.athleteName))
+      .withIndex("by_user_athlete", (q) =>
+        q.eq("userId", userId).eq("athleteName", args.athleteName)
+      )
       .collect();
 
     const cutoffDate = new Date();
@@ -145,13 +150,12 @@ export const getRecentBestsForAthlete = query({
 
 // Get athlete schedule summaries (last session + days remaining)
 export const getAthleteScheduleSummaries = query({
-  args: {
-    userId: v.string(),
-  },
+  args: {},
   handler: async (ctx, args) => {
+    const userId = await getUserId(ctx);
     const programs = await ctx.db
       .query("programs")
-      .withIndex("by_user", (q) => q.eq("userId", args.userId))
+      .withIndex("by_user", (q) => q.eq("userId", userId))
       .collect();
 
     // Group by athlete
@@ -197,16 +201,17 @@ export const getAthleteScheduleSummaries = query({
 // Check if a program exists
 export const checkProgramExists = query({
   args: {
-    userId: v.string(),
     athleteName: v.string(),
     programName: v.string(),
     startDate: v.string(),
   },
   handler: async (ctx, args) => {
+    const userId = await getUserId(ctx);
     const program = await ctx.db
       .query("programs")
-      .withIndex("by_athlete_program", (q) =>
+      .withIndex("by_user_athlete_program", (q) =>
         q
+          .eq("userId", userId)
           .eq("athleteName", args.athleteName)
           .eq("programName", args.programName)
           .eq("startDate", args.startDate)
@@ -220,7 +225,6 @@ export const checkProgramExists = query({
 // Insert a new program
 export const insertProgram = mutation({
   args: {
-    userId: v.string(),
     athleteName: v.string(),
     programName: v.string(),
     startDate: v.string(),
@@ -290,8 +294,9 @@ export const insertProgram = mutation({
     ),
   },
   handler: async (ctx, args) => {
+    const userId = await getUserId(ctx);
     const programId = await ctx.db.insert("programs", {
-      userId: args.userId,
+      userId,
       athleteName: args.athleteName,
       programName: args.programName,
       startDate: args.startDate,
@@ -309,7 +314,6 @@ export const insertProgram = mutation({
 export const updateProgram = mutation({
   args: {
     programId: v.id("programs"),
-    userId: v.string(),
     athleteName: v.string(),
     programName: v.string(),
     startDate: v.string(),
@@ -379,9 +383,10 @@ export const updateProgram = mutation({
     ),
   },
   handler: async (ctx, args) => {
+    const userId = await getUserId(ctx);
     const program = await ctx.db.get(args.programId);
     if (!program) throw new Error("Program not found");
-    if (program.userId !== args.userId) throw new Error("Unauthorized");
+    if (program.userId !== userId) throw new Error("Unauthorized");
 
     await ctx.db.patch(args.programId, {
       athleteName: args.athleteName,
@@ -400,23 +405,24 @@ export const updateProgram = mutation({
 // Delete a program
 export const deleteProgram = mutation({
   args: {
-    userId: v.string(),
     athleteName: v.string(),
     programName: v.string(),
     startDate: v.string(),
   },
   handler: async (ctx, args) => {
+    const userId = await getUserId(ctx);
     const program = await ctx.db
       .query("programs")
-      .withIndex("by_athlete_program", (q) =>
+      .withIndex("by_user_athlete_program", (q) =>
         q
+          .eq("userId", userId)
           .eq("athleteName", args.athleteName)
           .eq("programName", args.programName)
           .eq("startDate", args.startDate)
       )
       .first();
 
-    if (program && program.userId === args.userId) {
+    if (program && program.userId === userId) {
       await ctx.db.delete(program._id);
       return true;
     }
@@ -428,14 +434,14 @@ export const deleteProgram = mutation({
 // Delete all data for an athlete
 export const deleteAthleteData = mutation({
   args: {
-    userId: v.string(),
     athleteName: v.string(),
   },
   handler: async (ctx, args) => {
+    const userId = await getUserId(ctx);
     const programs = await ctx.db
       .query("programs")
       .withIndex("by_user_athlete", (q) =>
-        q.eq("userId", args.userId).eq("athleteName", args.athleteName)
+        q.eq("userId", userId).eq("athleteName", args.athleteName)
       )
       .collect();
 
@@ -465,8 +471,10 @@ export const markDayComplete = mutation({
     ),
   },
   handler: async (ctx, args) => {
+    const userId = await getUserId(ctx);
     const program = await ctx.db.get(args.programId);
     if (!program) throw new Error("Program not found");
+    if (program.userId !== userId) throw new Error("Unauthorized");
 
     const updatedWeeks = program.weeks.map((week) => {
       if (week.weekNumber !== args.weekNumber) return week;
@@ -501,8 +509,10 @@ export const markExerciseComplete = mutation({
     weight: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
+    const userId = await getUserId(ctx);
     const program = await ctx.db.get(args.programId);
     if (!program) throw new Error("Program not found");
+    if (program.userId !== userId) throw new Error("Unauthorized");
 
     const updatedWeeks = program.weeks.map((week) => {
       if (week.weekNumber !== args.weekNumber) return week;
@@ -571,8 +581,10 @@ export const updateExerciseSets = mutation({
     sets: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
+    const userId = await getUserId(ctx);
     const program = await ctx.db.get(args.programId);
     if (!program) throw new Error("Program not found");
+    if (program.userId !== userId) throw new Error("Unauthorized");
 
     const updatedWeeks = program.weeks.map((week) => {
       if (week.weekNumber !== args.weekNumber) return week;
@@ -615,8 +627,10 @@ export const updateAthleteComments = mutation({
     comments: v.string(),
   },
   handler: async (ctx, args) => {
+    const userId = await getUserId(ctx);
     const program = await ctx.db.get(args.programId);
     if (!program) throw new Error("Program not found");
+    if (program.userId !== userId) throw new Error("Unauthorized");
 
     const updatedWeeks = program.weeks.map((week) => {
       if (week.weekNumber !== args.weekNumber) return week;
@@ -660,8 +674,10 @@ export const updateDayRating = mutation({
     ),
   },
   handler: async (ctx, args) => {
+    const userId = await getUserId(ctx);
     const program = await ctx.db.get(args.programId);
     if (!program) throw new Error("Program not found");
+    if (program.userId !== userId) throw new Error("Unauthorized");
 
     const updatedWeeks = program.weeks.map((week) => {
       if (week.weekNumber !== args.weekNumber) return week;
@@ -692,8 +708,10 @@ export const updateDaySessionIntensity = mutation({
     sessionIntensity: v.number(),
   },
   handler: async (ctx, args) => {
+    const userId = await getUserId(ctx);
     const program = await ctx.db.get(args.programId);
     if (!program) throw new Error("Program not found");
+    if (program.userId !== userId) throw new Error("Unauthorized");
 
     const updatedWeeks = program.weeks.map((week) => {
       if (week.weekNumber !== args.weekNumber) return week;
@@ -722,9 +740,12 @@ export const getCompletedDays = query({
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
+    const userId = await getUserId(ctx);
     const programs = await ctx.db
       .query("programs")
-      .withIndex("by_athlete", (q) => q.eq("athleteName", args.athleteName))
+      .withIndex("by_user_athlete", (q) =>
+        q.eq("userId", userId).eq("athleteName", args.athleteName)
+      )
       .collect();
 
     // Flatten and filter completed days

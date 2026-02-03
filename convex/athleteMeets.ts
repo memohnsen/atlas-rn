@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { query, mutation } from "./_generated/server";
+import { getUserId } from "./auth";
 
 // Get the next upcoming meet for an athlete
 export const getNextMeet = query({
@@ -7,9 +8,12 @@ export const getNextMeet = query({
     athleteName: v.string(),
   },
   handler: async (ctx, args) => {
+    const userId = await getUserId(ctx);
     const meets = await ctx.db
       .query("athleteMeets")
-      .withIndex("by_athlete", (q) => q.eq("athleteName", args.athleteName))
+      .withIndex("by_user_athlete", (q) =>
+        q.eq("userId", userId).eq("athleteName", args.athleteName)
+      )
       .collect();
 
     if (meets.length === 0) return null;
@@ -34,10 +38,13 @@ export const upsertMeet = mutation({
     meetDate: v.string(),
   },
   handler: async (ctx, args) => {
+    const userId = await getUserId(ctx);
     // Remove any existing meets for this athlete
     const existing = await ctx.db
       .query("athleteMeets")
-      .withIndex("by_athlete", (q) => q.eq("athleteName", args.athleteName))
+      .withIndex("by_user_athlete", (q) =>
+        q.eq("userId", userId).eq("athleteName", args.athleteName)
+      )
       .collect();
 
     for (const meet of existing) {
@@ -46,6 +53,7 @@ export const upsertMeet = mutation({
 
     // Insert the new meet
     return await ctx.db.insert("athleteMeets", {
+      userId,
       athleteName: args.athleteName,
       meetName: args.meetName,
       meetDate: args.meetDate,
@@ -59,9 +67,12 @@ export const deleteMeet = mutation({
     athleteName: v.string(),
   },
   handler: async (ctx, args) => {
+    const userId = await getUserId(ctx);
     const meets = await ctx.db
       .query("athleteMeets")
-      .withIndex("by_athlete", (q) => q.eq("athleteName", args.athleteName))
+      .withIndex("by_user_athlete", (q) =>
+        q.eq("userId", userId).eq("athleteName", args.athleteName)
+      )
       .collect();
 
     for (const meet of meets) {
