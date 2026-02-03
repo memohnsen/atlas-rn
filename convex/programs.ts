@@ -39,6 +39,62 @@ export const getProgramsForAthlete = query({
   },
 });
 
+// Get the most recent program for an athlete
+export const getCurrentProgramForAthlete = query({
+  args: {
+    athleteName: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const userId = await getUserId(ctx);
+    const programs = await ctx.db
+      .query("programs")
+      .withIndex("by_user_athlete", (q) =>
+        q.eq("userId", userId).eq("athleteName", args.athleteName)
+      )
+      .collect();
+
+    if (programs.length === 0) return null;
+
+    programs.sort((a, b) => (a.startDate < b.startDate ? 1 : -1));
+    return programs[0];
+  },
+});
+
+// Coach dashboard summary
+export const getCoachDashboard = query({
+  args: {},
+  handler: async (ctx, args) => {
+    const userId = await getUserId(ctx);
+    const programs = await ctx.db
+      .query("programs")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .collect();
+
+    const byAthlete = new Map<string, typeof programs[number]>();
+    for (const program of programs) {
+      const existing = byAthlete.get(program.athleteName);
+      if (!existing || program.startDate > existing.startDate) {
+        byAthlete.set(program.athleteName, program);
+      }
+    }
+
+    return Array.from(byAthlete.values()).map((program) => {
+      const sessionsRemaining = program.weeks.reduce((sum, week) => {
+        const remaining = week.days.filter((day) => !day.completed).length;
+        return sum + remaining;
+      }, 0);
+
+      return {
+        athleteName: program.athleteName,
+        programName: program.programName,
+        startDate: program.startDate,
+        weekCount: program.weekCount,
+        sessionsRemaining,
+      };
+    });
+  },
+});
+
 // Get a specific program for the training calendar
 export const getAthleteProgram = query({
   args: {
@@ -606,6 +662,48 @@ export const updateExerciseSets = mutation({
                 setWeights: args.setWeights ?? ex.setWeights,
                 setStatuses: args.setStatuses ?? ex.setStatuses,
                 sets: args.sets ?? args.reps.length,
+              };
+            }),
+          };
+        }),
+      };
+    });
+
+    await ctx.db.patch(args.programId, { weeks: updatedWeeks });
+  },
+});
+
+// Update coach notes on an exercise
+export const updateExerciseNotes = mutation({
+  args: {
+    programId: v.id("programs"),
+    weekNumber: v.number(),
+    dayNumber: v.number(),
+    exerciseNumber: v.number(),
+    notes: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const userId = await getUserId(ctx);
+    const program = await ctx.db.get(args.programId);
+    if (!program) throw new Error("Program not found");
+    if (program.userId !== userId) throw new Error("Unauthorized");
+
+    const updatedWeeks = program.weeks.map((week) => {
+      if (week.weekNumber !== args.weekNumber) return week;
+
+      return {
+        ...week,
+        days: week.days.map((day) => {
+          if (day.dayNumber !== args.dayNumber) return day;
+
+          return {
+            ...day,
+            exercises: day.exercises.map((ex) => {
+              if (ex.exerciseNumber !== args.exerciseNumber) return ex;
+
+              return {
+                ...ex,
+                exerciseNotes: args.notes,
               };
             }),
           };

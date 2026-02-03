@@ -14,9 +14,21 @@ interface DayViewButtonsProps {
   onDateSelect: (date: Date) => void
   isExpanded: boolean
   onExpandedChange: (value: boolean) => void
+  coachEnabled?: boolean
+  selectedAthlete?: string | null
+  onOpenAthletePicker?: () => void
 }
 
-const DayViewButtons = ({ program, selectedDate, onDateSelect, isExpanded, onExpandedChange }: DayViewButtonsProps) => {
+const DayViewButtons = ({
+  program,
+  selectedDate,
+  onDateSelect,
+  isExpanded,
+  onExpandedChange,
+  coachEnabled,
+  selectedAthlete,
+  onOpenAthletePicker,
+}: DayViewButtonsProps) => {
   // State
   const [weekAnchor, setWeekAnchor] = useState(() => new Date())
   const [monthAnchor, setMonthAnchor] = useState(() => new Date())
@@ -111,7 +123,19 @@ const DayViewButtons = ({ program, selectedDate, onDateSelect, isExpanded, onExp
         {Platform.OS === 'ios' && 
           <GlassView style={{ borderRadius: 24}}>
             <View className="flex-row justify-between px-8 pt-14" >
-              <Text className="text-text-title font-bold font text-xl">{displayMonth}</Text>
+              <View className="flex-row items-center" style={{ gap: 10 }}>
+                {coachEnabled && (
+                  <TouchableOpacity
+                    onPress={onOpenAthletePicker}
+                    className="rounded-full bg-card-background px-3 py-1"
+                  >
+                    <Text className="text-text-title font-semibold text-sm">
+                      {selectedAthlete ? selectedAthlete.charAt(0).toUpperCase() + selectedAthlete.slice(1) : 'Athlete'}
+                    </Text>
+                  </TouchableOpacity>
+                )}
+                <Text className="text-text-title font-bold font text-xl">{displayMonth}</Text>
+              </View>
               <TouchableOpacity onPress={returnToToday}>
                 <Text className="text-text-title font-bold font text-md border border-white rounded p-1">Today</Text>
               </TouchableOpacity>
@@ -192,7 +216,19 @@ const DayViewButtons = ({ program, selectedDate, onDateSelect, isExpanded, onExp
          {Platform.OS === 'android' && 
             <View className='rounded-b-2xl overflow-hidden bg-day-card'>
             <View className="flex-row justify-between px-8 pt-14" >
-              <Text className="text-text-title font-bold font text-xl">{displayMonth}</Text>
+              <View className="flex-row items-center" style={{ gap: 10 }}>
+                {coachEnabled && (
+                  <TouchableOpacity
+                    onPress={onOpenAthletePicker}
+                    className="rounded-full bg-card-background px-3 py-1"
+                  >
+                    <Text className="text-text-title font-semibold text-sm">
+                      {selectedAthlete ?? 'Athlete'}
+                    </Text>
+                  </TouchableOpacity>
+                )}
+                <Text className="text-text-title font-bold font text-xl">{displayMonth}</Text>
+              </View>
               <TouchableOpacity onPress={returnToToday}>
                 <Text className="text-text-title font-bold font text-md border border-text-title rounded p-1">Today</Text>
               </TouchableOpacity>

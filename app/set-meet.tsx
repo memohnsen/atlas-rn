@@ -4,6 +4,7 @@ import { useMutation, useQuery } from 'convex/react'
 import { format } from 'date-fns'
 import { useRouter } from 'expo-router'
 import { Stack } from 'expo-router/stack'
+import { useAuth } from '@clerk/clerk-expo'
 import { useState } from 'react'
 import {
   Alert,
@@ -17,9 +18,11 @@ import {
 
 export default function SetMeetScreen() {
   const router = useRouter()
-  const existingMeet = useQuery(api.athleteMeets.getNextMeet, {
-    athleteName: 'maddisen',
-  })
+  const { isSignedIn } = useAuth()
+  const existingMeet = useQuery(
+    api.athleteMeets.getNextMeet,
+    isSignedIn ? { athleteName: 'maddisen' } : 'skip'
+  )
   const upsertMeet = useMutation(api.athleteMeets.upsertMeet)
   const deleteMeet = useMutation(api.athleteMeets.deleteMeet)
 

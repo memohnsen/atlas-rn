@@ -3,6 +3,7 @@ import { api } from '@/convex/_generated/api'
 import type { Doc } from '@/convex/_generated/dataModel'
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons'
 import { useQuery } from 'convex/react'
+import { useAuth } from '@clerk/clerk-expo'
 import { Chip } from 'heroui-native'
 import { useMemo, useState } from 'react'
 import { Alert, FlatList, Linking, Pressable, Text, TextInput, View } from 'react-native'
@@ -12,11 +13,12 @@ const ExerciseLibrary = () => {
   const [filtersOpen, setFiltersOpen] = useState(false)
   const [primaryFilter, setPrimaryFilter] = useState<string | null>(null)
   const [secondaryFilter, setSecondaryFilter] = useState<string | null>(null)
+  const { isSignedIn } = useAuth()
 
-  const libraryData = useQuery(api.exerciseLibrary.getAllExercises, {
-    offset: 0,
-    limit: 5000,
-  })
+  const libraryData = useQuery(
+    api.exerciseLibrary.getAllExercises,
+    isSignedIn ? { offset: 0, limit: 5000 } : 'skip'
+  )
 
   const exercises = (libraryData?.exercises ?? []) as Doc<'exerciseLibrary'>[]
   const totalCount = exercises.length

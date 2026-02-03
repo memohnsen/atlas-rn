@@ -1,11 +1,14 @@
+import AthletePickerModal from '@/components/AthletePickerModal'
+import { useCoach } from '@/components/CoachProvider'
 import Header from '@/components/Header'
 import ProgressCard from '@/components/ProgressCard'
 import { api } from '@/convex/_generated/api'
 import { GroupedPRs, LiftName } from '@/types/prs'
+import { useAuth } from '@clerk/clerk-expo'
 import { useQuery } from 'convex/react'
 import { Chip } from 'heroui-native'
 import { useState } from 'react'
-import { FlatList, View } from 'react-native'
+import { FlatList, Pressable, Text, View } from 'react-native'
 
 
 // add other rep maxes later
@@ -38,14 +41,23 @@ const normalizeExerciseName = (value: string) =>
 
 const Progress = () => {
   const [chipSelected, setChipSelected] = useState("all")
+  const { isSignedIn } = useAuth()
+  const { coachEnabled, selectedAthlete, setSelectedAthlete, athletes } = useCoach()
+  const [pickerOpen, setPickerOpen] = useState(false)
 
-  const prData = useQuery(api.athletePRs.getAthletePRs, {
-    athleteName: 'maddisen'
-  })
+  const prData = useQuery(
+    api.athletePRs.getAthletePRs,
+    isSignedIn
+      ? { athleteName: coachEnabled ? (selectedAthlete ?? 'maddisen') : 'maddisen' }
+      : 'skip'
+  )
 
-  const recentBests = useQuery(api.programs.getRecentBestsForAthlete, {
-    athleteName: 'maddisen',
-  })
+  const recentBests = useQuery(
+    api.programs.getRecentBestsForAthlete,
+    isSignedIn
+      ? { athleteName: coachEnabled ? (selectedAthlete ?? 'maddisen') : 'maddisen' }
+      : 'skip'
+  )
 
   const getOneRm = (p: GroupedPRs | undefined, lift: LiftName): number =>
     p?.[lift]?.["1rm"] ?? 0;
@@ -69,13 +81,34 @@ const Progress = () => {
 
   return (
     <View className='flex-1 bg-background'>
+      <AthletePickerModal
+        visible={pickerOpen}
+        athletes={athletes}
+        selectedAthlete={selectedAthlete}
+        onSelect={setSelectedAthlete}
+        onClose={() => setPickerOpen(false)}
+      />
       <FlatList
         data={filteredCards}
         keyExtractor={(item) => item.value}
         contentContainerStyle={{ paddingBottom: 100 }}
         ListHeaderComponent={
           <View className='px-5 pt-16'>
-            <Header title="Lifting Progress" subtitle="Track your personal records" />
+            <View className="flex-row items-center justify-between">
+              <View>
+                <Header title="Lifting Progress" subtitle="Track your personal records" />
+              </View>
+              {coachEnabled && (
+                <Pressable
+                  onPress={() => setPickerOpen(true)}
+                  className="rounded-full bg-card-background px-3 py-2"
+                >
+                  <Text className="text-text-title text-sm font-semibold">
+                    {selectedAthlete ? selectedAthlete.charAt(0).toUpperCase() + selectedAthlete.slice(1) : 'Athlete'}
+                  </Text>
+                </Pressable>
+              )}
+            </View>
 
             <View className='flex-row gap-2 mt-6'>
               {FILTER_CHIPS.map(({ label, value }) => (

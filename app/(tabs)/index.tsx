@@ -1,7 +1,11 @@
+import { useCoach } from '@/components/CoachProvider'
 import Header from '@/components/Header'
+import LiquidGlassButton from '@/components/LiquidGlassButton'
 import { api } from '@/convex/_generated/api'
 import { Program } from '@/types/program'
 import { getTrainingDayByDate } from '@/utils/programUtils'
+import { useAuth } from '@clerk/clerk-expo'
+import Ionicons from '@expo/vector-icons/Ionicons'
 import { useQuery } from 'convex/react'
 import { differenceInDays, format } from 'date-fns'
 import { useRouter } from 'expo-router'
@@ -10,28 +14,49 @@ import { useMemo } from 'react'
 import { Platform, Pressable, ScrollView, Text, View } from 'react-native'
 import Animated, { FadeInDown } from 'react-native-reanimated'
 
+const toTitleCase = (value: string) =>
+  value
+    .trim()
+    .split(' ')
+    .map((word) => (word ? word[0].toUpperCase() + word.slice(1) : ''))
+    .join(' ')
+
 export default function HomeScreen() {
   const router = useRouter()
+  const { isSignedIn } = useAuth()
+  const { coachEnabled } = useCoach()
 
   // Queries
-  const nextMeet = useQuery(api.athleteMeets.getNextMeet, {
-    athleteName: 'maddisen',
-  })
+  const coachDashboard = useQuery(
+    api.programs.getCoachDashboard,
+    coachEnabled && isSignedIn ? {} : 'skip'
+  )
 
-  const prData = useQuery(api.athletePRs.getAthletePRs, {
-    athleteName: 'maddisen',
-  })
+  const nextMeet = useQuery(
+    api.athleteMeets.getNextMeet,
+    isSignedIn ? { athleteName: 'maddisen' } : 'skip'
+  )
 
-  const programData = useQuery(api.programs.getAthleteProgram, {
-    athleteName: 'maddisen',
-    programName: 'test',
-    startDate: '2026-02-01',
-  })
+  const prData = useQuery(
+    api.athletePRs.getAthletePRs,
+    isSignedIn ? { athleteName: 'maddisen' } : 'skip'
+  )
 
-  const completedDays = useQuery(api.programs.getCompletedDays, {
-    athleteName: 'maddisen',
-    limit: 30,
-  })
+  const programData = useQuery(
+    api.programs.getAthleteProgram,
+    isSignedIn
+      ? {
+          athleteName: 'maddisen',
+          programName: 'test',
+          startDate: '2026-02-01',
+        }
+      : 'skip'
+  )
+
+  const completedDays = useQuery(
+    api.programs.getCompletedDays,
+    isSignedIn ? { athleteName: 'maddisen', limit: 30 } : 'skip'
+  )
 
   const program = programData as Program | undefined
 
@@ -64,6 +89,72 @@ export default function HomeScreen() {
 
   const totalCompleted = completedDays?.length ?? 0
 
+  if (coachEnabled) {
+    return (
+      <ScrollView
+        className="flex-1 bg-background"
+        contentContainerStyle={{ paddingBottom: 40 }}
+        contentInsetAdjustmentBehavior="automatic"
+      >
+        {Platform.OS === 'android' && <View className="h-20" />}
+        <View className="px-5 pt-4">
+          <View className="flex-row items-start justify-between">
+            <View>
+              <Header title="Coach Mode" subtitle={format(new Date(), 'EEEE, MMMM d')} />
+            </View>
+            <View className="pt-1">
+              {Platform.OS === 'ios' ? (
+                <LiquidGlassButton
+                  icon="settings-outline"
+                  iconSize={24}
+                  height={44}
+                  width={44}
+                  iconColor="#6C6C70"
+                  onPress={() => router.push('/settings')}
+                />
+              ) : (
+                <Pressable onPress={() => router.push('/settings')}>
+                  <Ionicons name="settings-outline" size={24} color="#6C6C70" />
+                </Pressable>
+              )}
+            </View>
+          </View>
+
+          <View className="mt-6" style={{ gap: 12 }}>
+            {coachDashboard?.map((summary) => (
+              <Card key={`${summary.athleteName}-${summary.startDate}`} className="bg-card-background">
+                <Card.Body>
+                  <Text className="text-text-title text-xl font-bold mt-1">
+                    {toTitleCase(summary.athleteName)}
+                  </Text>
+                  <Text className="text-text-title text-lg font-semibold mt-1">
+                    {toTitleCase(summary.programName)}
+                  </Text>
+                  <View className="flex-row mt-2" style={{ gap: 16 }}>
+                    <Text className="text-gray-500 text-sm">
+                      Starts {format(new Date(summary.startDate + 'T00:00:00'), 'MMM d, yyyy')}
+                    </Text>
+                    <Text className="text-gray-500 text-sm">
+                      {summary.weekCount} weeks
+                    </Text>
+                  </View>
+                  <View className="mt-3 rounded-lg bg-blue-900/10 px-3 py-2">
+                    <Text className="text-blue-energy text-sm font-semibold">
+                      {summary.sessionsRemaining} sessions remaining
+                    </Text>
+                  </View>
+                </Card.Body>
+              </Card>
+            ))}
+            {coachDashboard && coachDashboard.length === 0 && (
+              <Text className="text-gray-500 text-base">No athletes found.</Text>
+            )}
+          </View>
+        </View>
+      </ScrollView>
+    )
+  }
+
   return (
     <ScrollView
       className="flex-1 bg-background"
@@ -72,7 +163,27 @@ export default function HomeScreen() {
     >
       {Platform.OS === 'android' && <View className="h-20" />}
       <View className="px-5 pt-4">
-        <Header title="Atlas" subtitle={format(today, 'EEEE, MMMM d')} />
+        <View className="flex-row items-start justify-between">
+          <View>
+            <Header title="Atlas" subtitle={format(today, 'EEEE, MMMM d')} />
+          </View>
+          <View className="pt-1">
+            {Platform.OS === 'ios' ? (
+              <LiquidGlassButton
+                icon="settings-outline"
+                iconSize={24}
+                height={44}
+                width={44}
+                iconColor="#6C6C70"
+                onPress={() => router.push('/settings')}
+              />
+            ) : (
+              <Pressable onPress={() => router.push('/settings')}>
+                <Ionicons name="settings-outline" size={24} color="#6C6C70" />
+              </Pressable>
+            )}
+          </View>
+        </View>
 
         {/* Meet Countdown */}
         <Animated.View entering={FadeInDown.delay(100).duration(500)}>
@@ -217,7 +328,7 @@ export default function HomeScreen() {
                   Current Program
                 </Text>
                 <Text className="text-text-title text-xl font-bold mt-1">
-                  {program.programName.trim().split(' ').map(word => word[0].toUpperCase() + word.slice(1)).join(' ')}
+                  {toTitleCase(program.programName)}
                 </Text>
                 <View className="flex-row mt-2" style={{ gap: 16 }}>
                   <Text className="text-gray-500 text-sm">

@@ -34,55 +34,25 @@ const SignIn = () => {
   );
 
   return (
-    <View className="flex-1 bg-background justify-end" style={{ padding: 24 }}>
+    <View className="flex-1 bg-background justify-end p-6">
       {/* Branding */}
-      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+      <View className="flex-1 items-center justify-center">
         <Animated.View
           entering={FadeInDown.duration(600).springify().damping(18)}
-          style={{ alignItems: "center" }}
+          className="items-center"
         >
           <View
-            style={{
-              width: 80,
-              height: 80,
-              borderRadius: 20,
-              backgroundColor: "#5386E4",
-              justifyContent: "center",
-              alignItems: "center",
-              borderCurve: "continuous",
-              marginBottom: 24,
-            }}
+            className="h-20 w-20 items-center justify-center rounded-2xl bg-blue-energy mb-6"
+            style={{ borderCurve: "continuous" }}
           >
-            <Text
-              style={{
-                fontSize: 36,
-                fontWeight: "800",
-                color: "#FFFFFF",
-                letterSpacing: -1,
-              }}
-            >
+            <Text className="text-4xl font-extrabold text-white">
               A
             </Text>
           </View>
-          <Text
-            className="text-text-title"
-            style={{
-              fontSize: 34,
-              fontWeight: "800",
-              letterSpacing: -0.5,
-            }}
-          >
+          <Text className="text-text-title text-[34px] font-extrabold">
             Atlas
           </Text>
-          <Text
-            className="text-gray-500"
-            style={{
-              fontSize: 17,
-              marginTop: 8,
-              textAlign: "center",
-              lineHeight: 22,
-            }}
-          >
+          <Text className="text-gray-500 text-[17px] mt-2 text-center leading-6">
             Track your training, hit your PRs.
           </Text>
         </Animated.View>
@@ -96,21 +66,14 @@ const SignIn = () => {
         <Pressable
           onPress={() => handleOAuth(startGoogle)}
           style={({ pressed }) => ({
-            flexDirection: "row",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: 10,
             backgroundColor: pressed ? "#F2F2F7" : "#FFFFFF",
-            borderRadius: 14,
-            paddingVertical: 16,
             borderCurve: "continuous",
             boxShadow: "0 1px 3px rgba(0, 0, 0, 0.08)",
           })}
+          className="flex-row items-center justify-center rounded-2xl border border-gray-200 py-4"
         >
           <Ionicons name="logo-google" size={18} color="#111111" />
-          <Text
-            style={{ color: "#111111", fontSize: 17, fontWeight: "600" }}
-          >
+          <Text className="text-gray-900 text-[17px] font-semibold ml-2">
             Continue with Google
           </Text>
         </Pressable>
@@ -118,20 +81,13 @@ const SignIn = () => {
         <Pressable
           onPress={() => handleOAuth(startApple)}
           style={({ pressed }) => ({
-            flexDirection: "row",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: 10,
             backgroundColor: pressed ? "#222222" : "#111111",
-            borderRadius: 14,
-            paddingVertical: 16,
             borderCurve: "continuous",
           })}
+          className="flex-row items-center justify-center rounded-2xl py-4"
         >
           <Ionicons name="logo-apple" size={20} color="#FFFFFF" />
-          <Text
-            style={{ color: "#FFFFFF", fontSize: 17, fontWeight: "600" }}
-          >
+          <Text className="text-white text-[17px] font-semibold ml-2">
             Continue with Apple
           </Text>
         </Pressable>

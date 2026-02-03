@@ -1,3 +1,4 @@
+import { useCoach } from '@/components/CoachProvider'
 import { api } from '@/convex/_generated/api'
 import { Id } from '@/convex/_generated/dataModel'
 import { DayRating, Exercise, Program } from '@/types/program'
@@ -8,6 +9,7 @@ import {
   groupExercisesBySuperset,
 } from '@/utils/programUtils'
 import { useMutation, useQuery } from 'convex/react'
+import { useAuth } from '@clerk/clerk-expo'
 import { parse } from 'date-fns'
 import * as Haptics from 'expo-haptics'
 import { useLocalSearchParams, useRouter } from 'expo-router'
@@ -75,24 +77,42 @@ const TrainingLog = () => {
   const colorScheme = useColorScheme()
   const isDark = colorScheme === 'dark'
   const flatListRef = useRef<FlatList>(null)
+  const { isSignedIn } = useAuth()
+  const { coachEnabled, selectedAthlete } = useCoach()
 
   // ─── Data ──────────────────────────────────────────────
 
-  const programData = useQuery(api.programs.getAthleteProgram, {
-    athleteName: 'maddisen',
-    programName: 'test',
-    startDate: '2026-02-01',
-  })
+  const coachProgram = useQuery(
+    api.programs.getCurrentProgramForAthlete,
+    coachEnabled && selectedAthlete ? { athleteName: selectedAthlete } : 'skip'
+  )
 
-  const program = programData as (Program & { _id: Id<'programs'> }) | undefined
+  const programData = useQuery(
+    api.programs.getAthleteProgram,
+    !coachEnabled && isSignedIn
+      ? {
+          athleteName: 'maddisen',
+          programName: 'test',
+          startDate: '2026-02-01',
+        }
+      : 'skip'
+  )
+
+  const program = (coachEnabled ? coachProgram : programData) as (Program & {
+    _id: Id<'programs'>
+  }) | undefined
   const updateDayRating = useMutation(api.programs.updateDayRating)
   const updateDaySessionIntensity = useMutation(api.programs.updateDaySessionIntensity)
   const markDayComplete = useMutation(api.programs.markDayComplete)
   const markExerciseComplete = useMutation(api.programs.markExerciseComplete)
   const updateExerciseSets = useMutation(api.programs.updateExerciseSets)
-  const prs = useQuery(api.athletePRs.getAthletePRs, {
-    athleteName: program?.athleteName ?? 'maddisen',
-  })
+  const updateExerciseNotes = useMutation(api.programs.updateExerciseNotes)
+  const prs = useQuery(
+    api.athletePRs.getAthletePRs,
+    isSignedIn
+      ? { athleteName: coachEnabled ? (selectedAthlete ?? 'maddisen') : (program?.athleteName ?? 'maddisen') }
+      : 'skip'
+  )
 
   // ─── Loading / Error states ────────────────────────────
 
@@ -194,16 +214,23 @@ const TrainingLog = () => {
     return groupExercisesBySuperset(currentDay.exercises)
   }, [currentDay.exercises])
 
-  const pages = [
-    { key: 'readiness', type: 'readiness' as const },
-    ...supersetPages.map((page) => ({
-      key: `group-${page.key}`,
-      type: 'group' as const,
-      group: page.key,
-      exercises: page.exercises,
-    })),
-    { key: 'intensity', type: 'intensity' as const },
-  ]
+  const pages = coachEnabled
+    ? supersetPages.map((page) => ({
+        key: `group-${page.key}`,
+        type: 'group' as const,
+        group: page.key,
+        exercises: page.exercises,
+      }))
+    : [
+        { key: 'readiness', type: 'readiness' as const },
+        ...supersetPages.map((page) => ({
+          key: `group-${page.key}`,
+          type: 'group' as const,
+          group: page.key,
+          exercises: page.exercises,
+        })),
+        { key: 'intensity', type: 'intensity' as const },
+      ]
 
   const totalExercises = currentDay.exercises.length
   const completedExercises = currentDay.exercises.filter((e) => e.completed).length
@@ -230,7 +257,29 @@ const TrainingLog = () => {
       {/* Progress bar + page info */}
       <View style={{ paddingTop: 100, paddingBottom: 8, paddingHorizontal: 24 }}>
         {/* Week/Day header */}
-        <Animated.View entering={FadeInDown.duration(400)} style={{ flexDirection: 'row', alignItems: 'baseline', gap: 8, marginBottom: 16 }}>
+        <Animated.View
+          entering={FadeInDown.duration(400)}
+          style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 16 }}
+        >
+          {!coachEnabled && (
+            <Pressable
+              onPress={() => router.back()}
+              style={{
+                width: 32,
+                height: 32,
+                borderRadius: 16,
+                alignItems: 'center',
+                justifyContent: 'center',
+                backgroundColor: colors.card,
+              }}
+            >
+              {Platform.OS === 'ios' ? (
+                <SymbolView name="chevron.left" tintColor={colors.text} size={16} weight="bold" />
+              ) : (
+                <Text style={{ color: colors.text, fontSize: 16, fontWeight: '700' }}>‹</Text>
+              )}
+            </Pressable>
+          )}
           <Text style={{ color: colors.text, fontSize: 28, fontWeight: '700', letterSpacing: -0.5 }}>
             W{weekNumber}D{currentDay.dayNumber}
           </Text>
@@ -238,6 +287,21 @@ const TrainingLog = () => {
             <Text style={{ color: colors.textSecondary, fontSize: 15, fontWeight: '500' }}>
               {currentDay.dayLabel}
             </Text>
+          )}
+          {coachEnabled && (
+            <Pressable
+              onPress={() => router.back()}
+              style={{
+                marginLeft: 'auto',
+                paddingHorizontal: 12,
+                paddingVertical: 6,
+                borderRadius: 10,
+                borderCurve: 'continuous',
+                backgroundColor: colors.card,
+              }}
+            >
+              <Text style={{ color: colors.text, fontSize: 13, fontWeight: '700' }}>Done</Text>
+            </Pressable>
           )}
         </Animated.View>
 
@@ -296,11 +360,13 @@ const TrainingLog = () => {
                 activeReadiness={activeReadiness}
                 onExerciseToggle={handleExerciseToggle}
                 onUpdateSets={updateExerciseSets}
+                onUpdateNotes={updateExerciseNotes}
                 programId={program._id}
                 weekNumber={weekNumber}
                 dayNumber={dayNumber}
                 colors={colors}
                 isDark={isDark}
+                coachEnabled={coachEnabled}
               />
             )
           }
@@ -496,11 +562,19 @@ interface ExerciseGroupPageProps {
   activeReadiness: DayRating
   onExerciseToggle: (exerciseNumber: number, completed: boolean, weight?: number) => void
   onUpdateSets: UpdateExerciseSets
+  onUpdateNotes: (args: {
+    programId: Id<'programs'>
+    weekNumber: number
+    dayNumber: number
+    exerciseNumber: number
+    notes: string
+  }) => Promise<unknown>
   programId: Id<'programs'>
   weekNumber: number
   dayNumber: number
   colors: Record<string, string>
   isDark: boolean
+  coachEnabled: boolean
 }
 
 const ExerciseGroupPage = ({
@@ -511,11 +585,13 @@ const ExerciseGroupPage = ({
   activeReadiness,
   onExerciseToggle,
   onUpdateSets,
+  onUpdateNotes,
   programId,
   weekNumber,
   dayNumber,
   colors,
   isDark,
+  coachEnabled,
 }: ExerciseGroupPageProps) => {
   return (
     <View style={{ width: screenWidth }}>
@@ -562,11 +638,13 @@ const ExerciseGroupPage = ({
             activeReadiness={activeReadiness}
             onToggle={onExerciseToggle}
             onUpdateSets={onUpdateSets}
+            onUpdateNotes={onUpdateNotes}
             programId={programId}
             weekNumber={weekNumber}
             dayNumber={dayNumber}
             colors={colors}
             isDark={isDark}
+            coachEnabled={coachEnabled}
           />
         )}
         ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
@@ -584,11 +662,19 @@ interface ExerciseCardProps {
   activeReadiness: DayRating
   onToggle: (exerciseNumber: number, completed: boolean, weight?: number) => void
   onUpdateSets: UpdateExerciseSets
+  onUpdateNotes: (args: {
+    programId: Id<'programs'>
+    weekNumber: number
+    dayNumber: number
+    exerciseNumber: number
+    notes: string
+  }) => Promise<unknown>
   programId: Id<'programs'>
   weekNumber: number
   dayNumber: number
   colors: Record<string, string>
   isDark: boolean
+  coachEnabled: boolean
 }
 
 const ExerciseCard = ({
@@ -598,11 +684,13 @@ const ExerciseCard = ({
   activeReadiness,
   onToggle,
   onUpdateSets,
+  onUpdateNotes,
   programId,
   weekNumber,
   dayNumber,
   colors,
   isDark,
+  coachEnabled,
 }: ExerciseCardProps) => {
   const repsArray = Array.isArray(exercise.reps) ? exercise.reps : [exercise.reps]
   const percentArray = Array.isArray(exercise.percent)
@@ -610,6 +698,7 @@ const ExerciseCard = ({
     : exercise.percent !== undefined
       ? [exercise.percent]
       : []
+  const hasPercent = percentArray.length > 0
   const setWeightsArray = exercise.setWeights ?? []
   const setStatusesArray = exercise.setStatuses ?? []
   const setCount = Math.max(
@@ -628,6 +717,8 @@ const ExerciseCard = ({
   const [weightsBySet, setWeightsBySet] = useState<string[]>([])
   const [statusesBySet, setStatusesBySet] = useState<SetStatus[]>([])
   const [percentBySet, setPercentBySet] = useState<number[]>([])
+  const [notesDraft, setNotesDraft] = useState(exercise.exerciseNotes ?? '')
+  const [isEditingNotes, setIsEditingNotes] = useState(false)
 
   useEffect(() => {
     const nextReps = Array.from({ length: setCount }, (_, i) => repsArray[i] ?? repsArray[0] ?? '')
@@ -648,18 +739,18 @@ const ExerciseCard = ({
       return typeof derivedWeight === 'number' && derivedWeight > 0 ? String(derivedWeight) : ''
     })
     const nextStatuses = Array.from({ length: setCount }, (_, i) => setStatusesArray[i] ?? 'pending')
-    const nextPercents = percentArray.length > 0
-      ? Array.from({ length: setCount }, (_, i) => {
-          const value = percentArray[i] ?? percentArray[0]
-          return typeof value === 'number' ? value : 0
-        })
-      : []
+    const nextPercents = Array.from({ length: setCount }, (_, i) => {
+      const value = percentArray[i] ?? percentArray[0]
+      return typeof value === 'number' ? value : 0
+    })
 
     setRepsBySet(nextReps)
     setWeightsBySet(nextWeights)
     setStatusesBySet(nextStatuses)
     setPercentBySet(nextPercents)
-  }, [exercise.exerciseNumber, exercise.reps, exercise.percent, exercise.setWeights, exercise.setStatuses, exercise.sets])
+    setNotesDraft(exercise.exerciseNotes ?? '')
+    setIsEditingNotes(false)
+  }, [exercise.exerciseNumber, exercise.reps, exercise.percent, exercise.setWeights, exercise.setStatuses, exercise.sets, exercise.exerciseNotes])
 
   const buildSetWeights = (values: string[]) => {
     const parsed = values.map((value) => {
@@ -712,7 +803,10 @@ const ExerciseCard = ({
     const repsToSave = next.reps ?? repsBySet
     const weightsToSave = buildSetWeights(next.weights ?? weightsBySet)
     const statusesToSave = next.statuses ?? statusesBySet
-    const percentToSave = next.includePercent ? (next.percents ?? percentBySet) : undefined
+    const rawPercent = next.percents ?? percentBySet
+    const lastPercentIndex = rawPercent.findLastIndex((value) => value > 0)
+    const trimmedPercents = lastPercentIndex >= 0 ? rawPercent.slice(0, lastPercentIndex + 1) : []
+    const percentToSave = next.includePercent ? trimmedPercents : undefined
 
     await onUpdateSets({
       programId,
@@ -839,39 +933,91 @@ const ExerciseCard = ({
         </View>
       </Pressable>
 
-      {/* Exercise notes callout */}
-      {exercise.exerciseNotes && (
-        <View
-          style={{
-            marginHorizontal: 18,
-            marginBottom: 10,
-            paddingVertical: 10,
-            paddingHorizontal: 14,
-            borderRadius: 12,
-            borderCurve: 'continuous',
-            backgroundColor: isDark ? '#5386E415' : '#5386E410',
-            borderLeftWidth: 3,
-            borderLeftColor: colors.accent,
-            flexDirection: 'row',
-            alignItems: 'flex-start',
-            gap: 8,
-          }}
-        >
-          {Platform.OS === 'ios' && (
-            <SymbolView name="info.circle.fill" tintColor={colors.accent} size={16} weight="medium" style={{ marginTop: 1 }} />
+      {(coachEnabled || exercise.exerciseNotes) && (
+        <View style={{ marginHorizontal: 18, marginBottom: 12 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+            <Text style={{ color: colors.textSecondary, fontSize: 12, fontWeight: '600', textTransform: 'uppercase' }}>
+              Notes
+            </Text>
+            {coachEnabled && (
+              <Pressable
+                onPress={async () => {
+                  if (isEditingNotes) {
+                    await onUpdateNotes({
+                      programId,
+                      weekNumber,
+                      dayNumber,
+                      exerciseNumber: exercise.exerciseNumber,
+                      notes: notesDraft.trim(),
+                    })
+                  }
+                  setIsEditingNotes(!isEditingNotes)
+                }}
+                style={{
+                  paddingHorizontal: 10,
+                  paddingVertical: 4,
+                  borderRadius: 8,
+                  borderCurve: 'continuous',
+                  backgroundColor: colors.cardSecondary,
+                }}
+              >
+                <Text style={{ color: colors.text, fontSize: 12, fontWeight: '700' }}>
+                  {isEditingNotes ? 'Save' : 'Edit'}
+                </Text>
+              </Pressable>
+            )}
+          </View>
+
+          {isEditingNotes ? (
+            <TextInput
+              value={notesDraft}
+              onChangeText={setNotesDraft}
+              placeholder="Coach notes"
+              placeholderTextColor={colors.textTertiary}
+              multiline
+              style={{
+                color: colors.text,
+                fontSize: 14,
+                fontWeight: '500',
+                padding: 12,
+                borderRadius: 12,
+                borderCurve: 'continuous',
+                backgroundColor: colors.setRowBg,
+                minHeight: 56,
+              }}
+            />
+          ) : (
+            <View
+              style={{
+                paddingVertical: 10,
+                paddingHorizontal: 14,
+                borderRadius: 12,
+                borderCurve: 'continuous',
+                backgroundColor: isDark ? '#5386E415' : '#5386E410',
+                borderLeftWidth: 3,
+                borderLeftColor: colors.accent,
+                flexDirection: 'row',
+                alignItems: 'flex-start',
+                gap: 8,
+              }}
+            >
+              {Platform.OS === 'ios' && (
+                <SymbolView name="info.circle.fill" tintColor={colors.accent} size={16} weight="medium" style={{ marginTop: 1 }} />
+              )}
+              <Text
+                selectable
+                style={{
+                  color: isDark ? '#B0C4F5' : '#3A6BC5',
+                  fontSize: 14,
+                  fontWeight: '500',
+                  lineHeight: 20,
+                  flex: 1,
+                }}
+              >
+                {exercise.exerciseNotes?.trim() || (coachEnabled ? 'Add notes' : '')}
+              </Text>
+            </View>
           )}
-          <Text
-            selectable
-            style={{
-              color: isDark ? '#B0C4F5' : '#3A6BC5',
-              fontSize: 14,
-              fontWeight: '500',
-              lineHeight: 20,
-              flex: 1,
-            }}
-          >
-            {exercise.exerciseNotes}
-          </Text>
         </View>
       )}
 
@@ -966,21 +1112,53 @@ const ExerciseCard = ({
             </View>
 
             {/* Percent, right-aligned */}
-            {(set.derivedPercent !== undefined || set.effectivePercent !== undefined) && (
+            {(coachEnabled || set.derivedPercent !== undefined || set.effectivePercent !== undefined) && (
               <>
                 <View style={{ flex: 1 }} />
-                <Text
-                  style={{
-                    color: colors.textTertiary,
-                    fontSize: 15,
-                    fontWeight: '500',
-                    fontVariant: ['tabular-nums'],
-                    width: 52,
-                    textAlign: 'right',
-                  }}
-                >
-                  {set.derivedPercent ?? set.effectivePercent}%
-                </Text>
+                {coachEnabled ? (
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                    <TextInput
+                      value={percentBySet[set.index] > 0 ? String(percentBySet[set.index]) : ''}
+                      onChangeText={(value) => {
+                        const parsed = Number(value)
+                        setPercentBySet((prev) => {
+                          const next = [...prev]
+                          next[set.index] = Number.isFinite(parsed) && parsed > 0 ? parsed : 0
+                          return next
+                        })
+                      }}
+                      onEndEditing={() => {
+                        const nextPercents = [...percentBySet]
+                        persistSets({ percents: nextPercents, includePercent: true })
+                      }}
+                      placeholder="%"
+                      placeholderTextColor={colors.textTertiary}
+                      keyboardType="numeric"
+                      style={{
+                        color: colors.textTertiary,
+                        fontSize: 14,
+                        fontWeight: '600',
+                        fontVariant: ['tabular-nums'],
+                        width: 36,
+                        textAlign: 'right',
+                      }}
+                    />
+                    <Text style={{ color: colors.textTertiary, fontSize: 14, fontWeight: '600' }}>%</Text>
+                  </View>
+                ) : (
+                  <Text
+                    style={{
+                      color: colors.textTertiary,
+                      fontSize: 15,
+                      fontWeight: '500',
+                      fontVariant: ['tabular-nums'],
+                      width: 52,
+                      textAlign: 'right',
+                    }}
+                  >
+                    {set.derivedPercent ?? set.effectivePercent}%
+                  </Text>
+                )}
               </>
             )}
 
@@ -1067,7 +1245,7 @@ const ExerciseCard = ({
                 weights: nextWeights,
                 statuses: nextStatuses,
                 percents: nextPercents,
-                includePercent: nextPercents.length > 0,
+                includePercent: coachEnabled || hasPercent,
               })
             }}
             style={{
@@ -1101,7 +1279,7 @@ const ExerciseCard = ({
                 weights: nextWeights,
                 statuses: nextStatuses,
                 percents: nextPercents,
-                includePercent: nextPercents.length > 0,
+                includePercent: coachEnabled || hasPercent,
               })
             }}
             style={{
