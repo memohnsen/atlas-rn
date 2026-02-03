@@ -5,7 +5,7 @@ import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons'
 import { useQuery } from 'convex/react'
 import { Chip } from 'heroui-native'
 import { useMemo, useState } from 'react'
-import { FlatList, Linking, Pressable, Text, TextInput, View } from 'react-native'
+import { Alert, FlatList, Linking, Pressable, Text, TextInput, View } from 'react-native'
 
 const ExerciseLibrary = () => {
   const [searchTerm, setSearchTerm] = useState('')
@@ -69,7 +69,12 @@ const ExerciseLibrary = () => {
 
   const handleOpenLink = async (link?: string) => {
     if (!link) return
-    await Linking.openURL(link)
+    try {
+      await Linking.openURL(link)
+    } catch (error) {
+      console.error('Failed to open exercise link', error)
+      Alert.alert('Link unavailable', 'Unable to open this link right now.')
+    }
   }
 
   return (
