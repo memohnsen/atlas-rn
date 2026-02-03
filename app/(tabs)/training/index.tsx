@@ -4,11 +4,12 @@ import { api } from '@/convex/_generated/api'
 import { Program } from '@/types/program'
 import { useQuery } from 'convex/react'
 import { useState } from 'react'
-import { View } from 'react-native'
+import { Pressable, StyleSheet, View } from 'react-native'
 
 const TrainingCalendar = () => {
   // State
   const [selectedDate, setSelectedDate] = useState(new Date())
+  const [isExpanded, setIsExpanded] = useState(false)
 
   // Convex Query
   const programData = useQuery(api.programs.getAthleteProgram, {
@@ -21,8 +22,20 @@ const TrainingCalendar = () => {
 
   return (
     <View className='flex-1'>
-      <View className='absolute top-0 left-0 right-0 z-10'>
-        <DayViewButtons program={program} selectedDate={selectedDate} onDateSelect={setSelectedDate}/>
+      {isExpanded && (
+        <Pressable
+          style={[StyleSheet.absoluteFillObject, styles.overlay]}
+          onPress={() => setIsExpanded(false)}
+        />
+      )}
+      <View className='absolute top-0 left-0 right-0 z-10' style={styles.dayView}>
+        <DayViewButtons
+          program={program}
+          selectedDate={selectedDate}
+          onDateSelect={setSelectedDate}
+          isExpanded={isExpanded}
+          onExpandedChange={setIsExpanded}
+        />
       </View>
       <WorkoutCard program={program} selectedDate={selectedDate} />
     </View>
@@ -30,3 +43,13 @@ const TrainingCalendar = () => {
 }
 
 export default TrainingCalendar
+
+const styles = StyleSheet.create({
+  overlay: {
+    zIndex: 5,
+  },
+  dayView: {
+    zIndex: 10,
+    elevation: 10,
+  },
+})
