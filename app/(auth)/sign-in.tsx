@@ -22,7 +22,9 @@ const SignIn = () => {
       if (process.env.EXPO_OS === "ios") {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       }
-      const redirectUrl = Linking.createURL("/", { scheme: "atlas" });
+      const redirectUrl = Linking.createURL("oauth-native-callback", {
+        scheme: "atlas",
+      });
       const { createdSessionId, setActive } = await startFlow({ redirectUrl });
       if (createdSessionId) {
         await setActive?.({ session: createdSessionId });
