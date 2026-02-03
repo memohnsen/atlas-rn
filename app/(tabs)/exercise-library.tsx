@@ -2,11 +2,10 @@ import Header from '@/components/Header'
 import { api } from '@/convex/_generated/api'
 import type { Doc } from '@/convex/_generated/dataModel'
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons'
-import { FlashList } from '@shopify/flash-list'
-import { Chip } from 'heroui-native'
 import { useQuery } from 'convex/react'
+import { Chip } from 'heroui-native'
 import { useMemo, useState } from 'react'
-import { Linking, Pressable, Text, TextInput, View } from 'react-native'
+import { FlatList, Linking, Pressable, Text, TextInput, View } from 'react-native'
 
 const ExerciseLibrary = () => {
   const [searchTerm, setSearchTerm] = useState('')
@@ -75,10 +74,9 @@ const ExerciseLibrary = () => {
 
   return (
     <View className='flex-1 bg-background'>
-      <FlashList
+      <FlatList
         data={filteredExercises}
         keyExtractor={(exercise) => `${exercise._id}`}
-        estimatedItemSize={96}
         contentContainerStyle={{ paddingBottom: 24 }}
         ListHeaderComponent={
           <View className='px-5 pt-16'>
@@ -86,9 +84,9 @@ const ExerciseLibrary = () => {
 
             <View className='mt-6 flex-row items-center gap-3'>
               <View className='flex-1 flex-row items-center rounded-2xl bg-card-background px-4 py-3'>
-                <MaterialCommunityIcons name="magnify" size={20} color="#6B7280" />
+                <MaterialCommunityIcons name="magnify" size={16} color="#6B7280" />
                 <TextInput
-                  placeholder="Search exercises (min 3 characters)"
+                  placeholder="Search exercises"
                   placeholderTextColor="#6B7280"
                   value={searchTerm}
                   onChangeText={setSearchTerm}
@@ -171,7 +169,7 @@ const ExerciseLibrary = () => {
             disabled={!exercise.link}
             className={`mx-5 mt-4 ${exercise.link ? 'opacity-100' : 'opacity-60'}`}
           >
-            <View className='rounded-2xl bg-card-background p-4'>
+            <View className='rounded-2xl bg-card-background p-4 items-center'>
               <View className='flex-row items-start justify-between'>
                 <View className='flex-1 pr-3'>
                   <Text className='text-base font-semibold text-text-title'>
@@ -186,11 +184,13 @@ const ExerciseLibrary = () => {
                     </Text>
                   </View>
                 </View>
-                <View className='items-center'>
-                  <MaterialCommunityIcons name="youtube" size={22} color="#DC2626" />
-                  <Text className='mt-1 text-xs font-semibold text-gray-500'>
-                    {exercise.link ? 'Watch' : 'No link'}
-                  </Text>
+                <View className='items-center justify-center self-stretch'>
+                  <View className='flex-1 justify-center items-center'>
+                    <MaterialCommunityIcons name="youtube" size={22} color="#DC2626" />
+                    <Text className='mt-1 text-xs font-semibold text-gray-500'>
+                      {exercise.link ? 'Watch' : 'No link'}
+                    </Text>
+                  </View>
                 </View>
               </View>
             </View>
