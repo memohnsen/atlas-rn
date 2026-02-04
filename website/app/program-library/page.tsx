@@ -22,7 +22,7 @@ type TemplateSummary = {
 export default function ProgramLibraryPage() {
   const convex = useConvex()
   const templates =
-    (useQuery(api.programTemplates.getTemplates, { userId: USER_ID }) as TemplateSummary[] | undefined) ??
+    (useQuery(api.programTemplates.getTemplates, {}) as TemplateSummary[] | undefined) ??
     []
   const assignTemplate = useMutation(api.programTemplates.assignTemplateToAthlete)
   const [assignments, setAssignments] = useState<Record<string, AssignmentState>>({})
@@ -69,7 +69,6 @@ export default function ProgramLibraryPage() {
 
     try {
       const exists = await convex.query(api.programs.checkProgramExists, {
-        userId: USER_ID,
         athleteName: normalizedAthlete,
         programName: normalizedProgram,
         startDate: trimmedDate
@@ -84,7 +83,6 @@ export default function ProgramLibraryPage() {
       }
 
       await assignTemplate({
-        userId: USER_ID,
         templateName: libraryProgramName,
         athleteName: normalizedAthlete,
         programName: normalizedProgram,

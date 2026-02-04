@@ -38,3 +38,6 @@ sheet-scraper/venv/
 sheet-scraper/__pycache__/
 *.pyc
 website/convex/_generated
+
+# clerk configuration (can include secrets)
+/.clerk/

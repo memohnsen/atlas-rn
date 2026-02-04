@@ -85,7 +85,6 @@ export default function ProgramLibraryEditorPage() {
   const seedRef = useRef<string | null>(null)
 
   const template = useQuery(api.programTemplates.getTemplate, {
-    userId: USER_ID,
     programName: normalizedProgramName
   }) as ProgramTemplate | null | undefined
 
@@ -260,7 +259,6 @@ export default function ProgramLibraryEditorPage() {
     }))
 
     return {
-      userId: USER_ID,
       programName,
       weekCount: generatedProgram.length,
       repTargets: {
@@ -335,7 +333,6 @@ export default function ProgramLibraryEditorPage() {
 
     try {
       const exists = await convex.query(api.programTemplates.checkTemplateExists, {
-        userId: USER_ID,
         programName: normalizedCopyName
       })
 
@@ -385,7 +382,6 @@ export default function ProgramLibraryEditorPage() {
 
     try {
       const exists = await convex.query(api.programs.checkProgramExists, {
-        userId: USER_ID,
         athleteName: normalizedAthlete,
         programName: normalizedProgram,
         startDate: start
@@ -405,7 +401,6 @@ export default function ProgramLibraryEditorPage() {
 
       // Then assign it to the athlete
       await convex.mutation(api.programTemplates.assignTemplateToAthlete, {
-        userId: USER_ID,
         templateName: normalizedProgramName,
         athleteName: normalizedAthlete,
         programName: normalizedProgram,

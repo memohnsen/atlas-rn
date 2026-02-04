@@ -26,7 +26,6 @@ export default function Home() {
     api.programs.checkProgramExists,
     data.length > 0 && data[0].athlete_name && data[0].program_name && data[0].start_date
       ? {
-          userId: USER_ID,
           athleteName: data[0].athlete_name,
           programName: data[0].program_name,
           startDate: data[0].start_date,
@@ -183,7 +182,6 @@ export default function Home() {
       }))
 
       await insertProgram({
-        userId: USER_ID,
         athleteName: firstRecord.athlete_name,
         programName: firstRecord.program_name,
         startDate: firstRecord.start_date,

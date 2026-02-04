@@ -38,7 +38,7 @@ function formatDate(value: string | null) {
 export default function AthleteScheduleSummary() {
   const summaries = useQuery(
     api.programs.getAthleteScheduleSummaries,
-    { userId: USER_ID }
+    {}
   ) as ScheduleSummaryResponse[] | undefined
 
   const data: AthleteScheduleSummary[] = useMemo(() => {

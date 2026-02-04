@@ -41,7 +41,7 @@ export default function ProgramBuilderPage() {
   })
   // Convex queries
   const athletesFromDb =
-    (useQuery(api.programs.getAthletes, { userId: USER_ID }) as string[] | undefined) ?? []
+    (useQuery(api.programs.getAthletes, {}) as string[] | undefined) ?? []
   const [localAthletes, setLocalAthletes] = useState<string[]>([])
   const athletes = [...athletesFromDb, ...localAthletes].filter((v, i, a) => a.indexOf(v) === i).sort()
 
@@ -352,7 +352,6 @@ export default function ProgramBuilderPage() {
 
       // Check if program exists
       const exists = await convex.query(api.programs.checkProgramExists, {
-        userId: USER_ID,
         athleteName: normalizedAthlete,
         programName: normalizedProgram,
         startDate: start
@@ -399,7 +398,6 @@ export default function ProgramBuilderPage() {
       }))
 
       await insertProgram({
-        userId: USER_ID,
         athleteName: normalizedAthlete,
         programName: normalizedProgram,
         startDate: start,
@@ -447,7 +445,6 @@ export default function ProgramBuilderPage() {
 
       // Check if template exists
       const exists = await convex.query(api.programTemplates.checkTemplateExists, {
-        userId: USER_ID,
         programName: normalizedProgram
       })
       if (exists) {
@@ -486,7 +483,6 @@ export default function ProgramBuilderPage() {
       }))
 
       await saveTemplate({
-        userId: USER_ID,
         programName: normalizedProgram,
         weekCount,
         repTargets,

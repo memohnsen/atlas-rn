@@ -52,18 +52,17 @@ export default function AnalyticsPage() {
   const [selectedAthlete, setSelectedAthlete] = useState('')
   const [selectedProgram, setSelectedProgram] = useState('')
 
-  const athletes = (useQuery(api.programs.getAthletes, { userId: USER_ID }) as string[] | undefined) ?? []
+  const athletes = (useQuery(api.programs.getAthletes, {}) as string[] | undefined) ?? []
 
   const programs = useQuery(
     api.programs.getProgramsForAthlete,
-    selectedAthlete ? { userId: USER_ID, athleteName: selectedAthlete } : 'skip'
+    selectedAthlete ? { athleteName: selectedAthlete } : 'skip'
   ) as ProgramOption[] | undefined ?? []
 
   const workoutsData = useQuery(
     api.programs.getWorkoutsForAnalytics,
     selectedAthlete
       ? {
-          userId: USER_ID,
           athleteName: selectedAthlete,
           programName: selectedProgram || undefined
         }

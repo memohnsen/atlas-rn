@@ -76,7 +76,7 @@ type ProgramData = {
 
 export default function ProgramEditorPage() {
   const athletes =
-    (useQuery(api.programs.getAthletes, { userId: USER_ID }) as string[] | undefined) ?? []
+    (useQuery(api.programs.getAthletes, {}) as string[] | undefined) ?? []
   const [selectedAthlete, setSelectedAthlete] = useState('')
   const [selectedProgram, setSelectedProgram] = useState<ProgramOption | null>(null)
   const [seedDays, setSeedDays] = useState<ProgramBuilderDay[]>([])
@@ -99,7 +99,7 @@ export default function ProgramEditorPage() {
   const programs =
     (useQuery(
       api.programs.getProgramsForAthlete,
-      selectedAthlete ? { userId: USER_ID, athleteName: selectedAthlete } : 'skip'
+      selectedAthlete ? { athleteName: selectedAthlete } : 'skip'
     ) as ProgramSummary[] | undefined) ?? []
 
   const selectedProgramData = useQuery(
@@ -257,7 +257,6 @@ export default function ProgramEditorPage() {
     }))
 
     return {
-      userId: USER_ID,
       athleteName: athlete,
       programName: program,
       startDate: start,

@@ -64,11 +64,11 @@ export default function BrowsePage() {
 
   // Convex queries
   const athletes =
-    (useQuery(api.programs.getAthletes, { userId: USER_ID }) as string[] | undefined) ?? []
+    (useQuery(api.programs.getAthletes, {}) as string[] | undefined) ?? []
   const programs =
     (useQuery(
       api.programs.getProgramsForAthlete,
-      selectedAthlete ? { userId: USER_ID, athleteName: selectedAthlete } : 'skip'
+      selectedAthlete ? { athleteName: selectedAthlete } : 'skip'
     ) as { programName: string; startDate: string }[] | undefined) ?? []
   const athletePRs = useQuery(
     api.athletePRs.getAthletePRs,
@@ -157,7 +157,7 @@ export default function BrowsePage() {
     }
     setDeleteError(null)
     try {
-      await deleteAthlete({ userId: USER_ID, athleteName: selectedAthlete })
+      await deleteAthlete({ athleteName: selectedAthlete })
       setShowDeleteModal(false)
       setSelectedProgram(null)
       setSelectedAthlete(null)
@@ -174,7 +174,6 @@ export default function BrowsePage() {
     setDeleteProgramError(null)
     try {
       await deleteProgram({
-        userId: USER_ID,
         athleteName: selectedAthlete,
         programName: programToDelete.program_name,
         startDate: programToDelete.start_date,
