@@ -1,8 +1,17 @@
 import { ClerkProvider, useAuth } from "@clerk/clerk-expo";
 import { Stack, useRouter, useSegments } from "expo-router";
+import * as SplashScreen from "expo-splash-screen";
 import { HeroUINativeProvider, useThemeColor } from "heroui-native";
-import { useEffect, type ReactNode } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { useColorScheme, View, Text } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withDelay,
+  withSpring,
+  withTiming,
+} from "react-native-reanimated";
 import { ConvexReactClient } from "convex/react";
 import { ConvexProviderWithClerk } from "convex/react-clerk";
 import * as SecureStore from "expo-secure-store";
@@ -10,6 +19,8 @@ import "../global.css";
 import { CoachProvider } from "@/components/CoachProvider";
 import { OnboardingProvider, useOnboarding } from "@/components/OnboardingProvider";
 import { UnitProvider } from "@/components/UnitProvider";
+
+SplashScreen.preventAutoHideAsync();
 
 const convex = new ConvexReactClient(process.env.EXPO_PUBLIC_CONVEX_URL!);
 const publishableKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY!;
@@ -31,11 +42,111 @@ const tokenCache = {
   },
 };
 
+function LaunchScreen({ onFinish }: { onFinish: () => void }) {
+  const colorScheme = useColorScheme();
+  const isDark = colorScheme === "dark";
+
+  const logoScale = useSharedValue(0.8);
+  const logoOpacity = useSharedValue(0);
+  const textOpacity = useSharedValue(0);
+  const containerOpacity = useSharedValue(1);
+
+  useEffect(() => {
+    // Hide native splash immediately — our animated version takes over
+    SplashScreen.hideAsync();
+
+    // Animate in
+    logoScale.value = withSpring(1, { damping: 14, stiffness: 120 });
+    logoOpacity.value = withTiming(1, { duration: 400 });
+    textOpacity.value = withDelay(250, withTiming(1, { duration: 400 }));
+
+    // Hold, then fade out
+    const timeout = setTimeout(() => {
+      containerOpacity.value = withTiming(0, { duration: 300 });
+      setTimeout(onFinish, 350);
+    }, 1800);
+
+    return () => clearTimeout(timeout);
+  }, []);
+
+  const logoStyle = useAnimatedStyle(() => ({
+    opacity: logoOpacity.value,
+    transform: [{ scale: logoScale.value }],
+  }));
+
+  const textStyle = useAnimatedStyle(() => ({
+    opacity: textOpacity.value,
+  }));
+
+  const containerStyle = useAnimatedStyle(() => ({
+    opacity: containerOpacity.value,
+  }));
+
+  return (
+    <Animated.View
+      style={[
+        {
+          position: "absolute",
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          zIndex: 100,
+          backgroundColor: isDark ? "#000000" : "#FFFFFF",
+          alignItems: "center",
+          justifyContent: "center",
+        },
+        containerStyle,
+      ]}
+    >
+      <Animated.View style={logoStyle}>
+        <View
+          style={{
+            width: 88,
+            height: 88,
+            borderRadius: 22,
+            borderCurve: "continuous",
+            backgroundColor: "#5386E4",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <Text
+            style={{
+              fontSize: 42,
+              fontWeight: "800",
+              color: "#FFFFFF",
+            }}
+          >
+            A
+          </Text>
+        </View>
+      </Animated.View>
+      <Animated.View style={[{ marginTop: 16 }, textStyle]}>
+        <Text
+          style={{
+            fontSize: 28,
+            fontWeight: "800",
+            color: isDark ? "#FFFFFF" : "#000000",
+          }}
+        >
+          Atlas
+        </Text>
+      </Animated.View>
+    </Animated.View>
+  );
+}
+
 function AuthGate({ children }: { children: ReactNode }) {
   const { isLoaded, isSignedIn } = useAuth();
   const { hasOnboarded, isHydrated } = useOnboarding();
   const segments = useSegments();
   const router = useRouter();
+  const [showLaunch, setShowLaunch] = useState(true);
+
+  const handleLaunchFinish = useCallback(() => {
+    setShowLaunch(false);
+  }, []);
 
   useEffect(() => {
     if (!isLoaded || !isHydrated) return;
@@ -63,7 +174,13 @@ function AuthGate({ children }: { children: ReactNode }) {
   }, [isLoaded, isSignedIn, hasOnboarded, isHydrated, router, segments]);
 
   if (!isLoaded || !isHydrated) return null;
-  return <>{children}</>;
+
+  return (
+    <>
+      {children}
+      {showLaunch && <LaunchScreen onFinish={handleLaunchFinish} />}
+    </>
+  );
 }
 
 function RootStack() {
