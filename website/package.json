@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev --webpack",
     "build": "npm run copy-convex && next build --webpack",
     "copy-convex": "mkdir -p convex/_generated && (test -d ../convex/_generated && cp -r ../convex/_generated/* convex/_generated/ || true)",
     "start": "next start",
