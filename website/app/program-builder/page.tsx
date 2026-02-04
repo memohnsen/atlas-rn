@@ -503,365 +503,522 @@ export default function ProgramBuilderPage() {
     }
   }
 
+  const [selectedWeek, setSelectedWeek] = useState<number | 'all'>(1)
+  const [detailsPanelOpen, setDetailsPanelOpen] = useState(false)
+
+  const filteredWeeks = useMemo(() => {
+    if (selectedWeek === 'all') return generatedProgram
+    return generatedProgram.filter(week => week.weekNumber === selectedWeek)
+  }, [generatedProgram, selectedWeek])
+
   return (
-    <div className="page-container">
-      <div className="page-header">
-        <h1 style={{ margin: 0, color: '#333' }}>Program Builder</h1>
-        <div className="header-actions">
-          <Link
-            href="/analytics"
-            style={{
-              padding: '10px 20px',
-              fontSize: '14px',
-              fontWeight: '600',
-              backgroundColor: '#10b981',
-              color: 'white',
-              border: 'none',
-              borderRadius: '6px',
-              textDecoration: 'none',
-              transition: 'background-color 0.2s'
-            }}
-          >
-            Analytics
-          </Link>
-          <Link
-            href="/program-library"
-            style={{
-              padding: '10px 20px',
-              fontSize: '14px',
-              fontWeight: '600',
-              backgroundColor: '#0ea5e9',
-              color: 'white',
-              border: 'none',
-              borderRadius: '6px',
-              textDecoration: 'none',
-              transition: 'background-color 0.2s'
-            }}
-          >
-            Program Library
-          </Link>
-          <Link
-            href="/"
-            style={{
-              padding: '10px 20px',
-              fontSize: '14px',
-              fontWeight: '600',
-              backgroundColor: '#6c757d',
-              color: 'white',
-              border: 'none',
-              borderRadius: '6px',
-              textDecoration: 'none',
-              transition: 'background-color 0.2s'
-            }}
-          >
-            ← Back to Scraper
-          </Link>
-        </div>
-      </div>
-
-      <p style={{ marginBottom: '20px', color: '#666', fontSize: '14px' }}>
-        Build a program template by selecting training days and adding exercises.
-      </p>
-
+    <div style={{
+      minHeight: '100vh',
+      backgroundColor: '#0a0f1a',
+      fontFamily: '"Styrene A", -apple-system, BlinkMacSystemFont, sans-serif',
+      color: '#e2e8f0'
+    }}>
+      {/* Header */}
       <div style={{
-        marginBottom: '24px',
-        padding: '16px',
-        backgroundColor: '#ffffff',
-        borderRadius: '8px',
-        border: '1px solid #e5e7eb',
-        display: 'flex',
-        alignItems: 'center',
-        gap: '16px',
-        flexWrap: 'wrap'
+        borderBottom: '1px solid #1e293b',
+        backgroundColor: '#0f1419',
+        position: 'sticky',
+        top: 0,
+        zIndex: 50
       }}>
-        <div style={{ flex: '1 1 240px' }}>
-          <h2 style={{ margin: 0, fontSize: '16px', color: '#111827' }}>
-            Preset template
-          </h2>
-          <p style={{ margin: '6px 0 0', fontSize: '13px', color: '#6b7280' }}>
-            Loads the default day setup and week-over-week intensity logic.
-          </p>
-        </div>
-        <div style={{ minWidth: '220px' }}>
-          <label
-            htmlFor="template-select"
-            style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#374151' }}
-          >
-            Template type
-          </label>
-          <select
-            id="template-select"
-            value={selectedTemplate}
-            onChange={(event) => setSelectedTemplate(event.target.value as ProgramBuilderTemplateId)}
-            style={{
-              marginTop: '6px',
-              padding: '8px 10px',
-              fontSize: '14px',
-              border: '1px solid #d1d5db',
-              borderRadius: '6px',
-              backgroundColor: '#fff',
-              width: '100%'
-            }}
-          >
-            {programBuilderTemplateOptions.map((option) => (
-              <option key={option.id} value={option.id}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-        </div>
-        <button
-          type="button"
-          onClick={handleLoadTemplate}
-          style={{
-            padding: '10px 18px',
-            fontSize: '14px',
-            fontWeight: 600,
-            backgroundColor: templateActive ? '#0f172a' : '#111827',
-            color: 'white',
-            border: 'none',
-            borderRadius: '6px',
-            cursor: 'pointer'
-          }}
-        >
-          {templateActive ? 'Reload Template' : 'Load Template'}
-        </button>
-      </div>
-
-      <div style={{
-        marginBottom: '24px',
-        padding: '20px',
-        backgroundColor: '#f8f9fa',
-        borderRadius: '8px',
-        border: '1px solid #dee2e6'
-      }}>
-        <h2 style={{ marginBottom: '15px', fontSize: '18px', color: '#333' }}>
-          Program Details
-        </h2>
-        <div style={{ display: 'grid', gap: '14px' }}>
+        <div style={{
+          maxWidth: '1800px',
+          margin: '0 auto',
+          padding: '20px 32px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: '24px'
+        }}>
           <div>
-            <label style={{ display: 'block', marginBottom: '5px', fontWeight: '600', color: '#555' }}>
-              Athlete Name <span style={{ color: '#d00' }}>*</span>:
-            </label>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', alignItems: 'center' }}>
-              <select
-                value={athleteName}
-                onChange={(event) => handleSelectAthlete(event.target.value)}
-                disabled={athletesFromDb === undefined}
-                style={{
-                  flex: '1 1 220px',
-                  padding: '10px',
-                  fontSize: '14px',
-                  border: '1px solid #ddd',
-                  borderRadius: '4px',
-                  backgroundColor: athletesFromDb === undefined ? '#f3f4f6' : '#fff'
-                }}
-              >
-                <option value="">
-                  {athletesFromDb === undefined ? 'Loading athletes...' : 'Select athlete'}
-                </option>
-                {athletes.map((athlete) => (
-                  <option key={athlete} value={athlete}>
-                    {athlete || 'Unnamed athlete'}
-                  </option>
-                ))}
-              </select>
+            <h1 style={{
+              margin: 0,
+              fontSize: '28px',
+              fontWeight: 700,
+              letterSpacing: '-0.02em',
+              background: 'linear-gradient(135deg, #f8fafc 0%, #94a3b8 100%)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              backgroundClip: 'text'
+            }}>
+              Program Builder
+            </h1>
+          </div>
+          <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+            <Link
+              href="/analytics"
+              style={{
+                padding: '10px 18px',
+                fontSize: '14px',
+                fontWeight: 600,
+                backgroundColor: 'transparent',
+                color: '#94a3b8',
+                border: '1px solid #334155',
+                borderRadius: '8px',
+                textDecoration: 'none',
+                transition: 'all 0.2s',
+                letterSpacing: '0.01em'
+              }}
+            >
+              Analytics
+            </Link>
+            <Link
+              href="/program-library"
+              style={{
+                padding: '10px 18px',
+                fontSize: '14px',
+                fontWeight: 600,
+                backgroundColor: 'transparent',
+                color: '#94a3b8',
+                border: '1px solid #334155',
+                borderRadius: '8px',
+                textDecoration: 'none',
+                transition: 'all 0.2s',
+                letterSpacing: '0.01em'
+              }}
+            >
+              Library
+            </Link>
+            <button
+              type="button"
+              onClick={() => setDetailsPanelOpen(!detailsPanelOpen)}
+              style={{
+                padding: '10px 18px',
+                fontSize: '14px',
+                fontWeight: 600,
+                backgroundColor: detailsPanelOpen ? '#1e3a8a' : '#1e40af',
+                color: '#e0e7ff',
+                border: 'none',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+                letterSpacing: '0.01em'
+              }}
+            >
+              {detailsPanelOpen ? 'Hide Details' : 'Program Details'}
+            </button>
+          </div>
+        </div>
+
+        {/* Week Navigation */}
+        {generatedProgram.length > 0 && (
+          <div style={{
+            maxWidth: '1800px',
+            margin: '0 auto',
+            padding: '16px 32px',
+            borderTop: '1px solid #1e293b',
+            display: 'flex',
+            gap: '8px',
+            alignItems: 'center',
+            overflowX: 'auto'
+          }}>
+            <button
+              type="button"
+              onClick={() => setSelectedWeek('all')}
+              style={{
+                padding: '8px 20px',
+                fontSize: '13px',
+                fontWeight: 600,
+                backgroundColor: selectedWeek === 'all' ? '#0f766e' : 'transparent',
+                color: selectedWeek === 'all' ? '#ccfbf1' : '#64748b',
+                border: selectedWeek === 'all' ? '1px solid #14b8a6' : '1px solid #334155',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+                whiteSpace: 'nowrap',
+                letterSpacing: '0.02em'
+              }}
+            >
+              All Weeks
+            </button>
+            {Array.from({ length: weekCount }, (_, i) => i + 1).map((weekNum) => (
               <button
+                key={weekNum}
                 type="button"
-                onClick={() => setShowNewAthleteInput(true)}
-                disabled={showNewAthleteInput}
+                onClick={() => setSelectedWeek(weekNum)}
                 style={{
-                  padding: '10px 14px',
+                  padding: '8px 20px',
                   fontSize: '13px',
                   fontWeight: 600,
-                  borderRadius: '6px',
-                  border: '1px solid #cbd5f5',
-                  backgroundColor: showNewAthleteInput ? '#e5e7eb' : '#eef2ff',
-                  color: showNewAthleteInput ? '#9ca3af' : '#1e3a8a',
-                  cursor: showNewAthleteInput ? 'not-allowed' : 'pointer'
+                  backgroundColor: selectedWeek === weekNum ? '#0f766e' : 'transparent',
+                  color: selectedWeek === weekNum ? '#ccfbf1' : '#64748b',
+                  border: selectedWeek === weekNum ? '1px solid #14b8a6' : '1px solid #334155',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  whiteSpace: 'nowrap',
+                  letterSpacing: '0.02em'
                 }}
               >
-                Add new
+                Week {weekNum}
               </button>
-            </div>
-            {showNewAthleteInput && (
-              <div style={{ marginTop: '10px', display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
-                <input
-                  type="text"
-                  ref={newAthleteInputRef}
-                  value={newAthleteName}
-                  onChange={(event) => setNewAthleteName(event.target.value)}
-                  placeholder="New athlete name"
-                  style={{
-                    flex: '1 1 200px',
-                    padding: '10px',
-                    fontSize: '14px',
-                    border: '1px solid #d1d5db',
-                    borderRadius: '4px'
-                  }}
-                />
-                <button
-                  type="button"
-                  onClick={handleAddNewAthlete}
-                  style={{
-                    padding: '10px 14px',
-                    fontSize: '13px',
-                    fontWeight: 600,
-                    borderRadius: '6px',
-                    border: '1px solid #16a34a',
-                    backgroundColor: '#16a34a',
-                    color: '#fff',
-                    cursor: 'pointer'
-                  }}
-                >
-                  Save athlete
-                </button>
-                <button
-                  type="button"
-                  onClick={handleCancelNewAthlete}
-                  style={{
-                    padding: '10px 14px',
-                    fontSize: '13px',
-                    fontWeight: 600,
-                    borderRadius: '6px',
-                    border: '1px solid #e5e7eb',
-                    backgroundColor: '#f8fafc',
-                    color: '#475569',
-                    cursor: 'pointer'
-                  }}
-                >
-                  Cancel
-                </button>
-                <p style={{ flexBasis: '100%', margin: 0, fontSize: '12px', color: '#6b7280' }}>
-                  New athletes are saved when you push the program to the database.
-                </p>
-              </div>
-            )}
-            {athleteInputError && (
-              <p style={{ marginTop: '6px', marginBottom: 0, fontSize: '12px', color: '#dc2626' }}>
-                {athleteInputError}
-              </p>
-            )}
+            ))}
           </div>
-          <div>
-            <label style={{ display: 'block', marginBottom: '5px', fontWeight: '600', color: '#555' }}>
-              Program Name <span style={{ color: '#d00' }}>*</span>:
-            </label>
-            <input
-              type="text"
-              value={programName}
-              onChange={(event) => setProgramName(event.target.value)}
-              placeholder="Enter program name"
-              style={{
-                width: '100%',
-                padding: '10px',
-                fontSize: '14px',
-                border: '1px solid #ddd',
-                borderRadius: '4px'
-              }}
-            />
-          </div>
-          <div>
-            <label style={{ display: 'block', marginBottom: '5px', fontWeight: '600', color: '#555' }}>
-              Start Date <span style={{ color: '#d00' }}>*</span>:
-            </label>
-            <input
-              type="date"
-              value={startDate}
-              onChange={(event) => setStartDate(event.target.value)}
-              style={{
-                padding: '10px',
-                fontSize: '14px',
-                border: '1px solid #ddd',
-                borderRadius: '4px'
-              }}
-            />
-            <p style={{ marginTop: '6px', marginBottom: 0, fontSize: '12px', color: '#6b7280' }}>
-              The date when this program starts for the athlete.
-            </p>
-          </div>
-        </div>
-        <button
-          type="button"
-          onClick={handlePushToDatabase}
-          disabled={pushDisabled}
-          style={{
-            marginTop: '16px',
-            padding: '10px 20px',
-            fontSize: '14px',
-            fontWeight: '600',
-            backgroundColor: pushDisabled ? '#e5e7eb' : '#2563eb',
-            color: pushDisabled ? '#9ca3af' : 'white',
-            border: `1px solid ${pushDisabled ? '#d1d5db' : '#2563eb'}`,
-            borderRadius: '6px',
-            cursor: pushDisabled ? 'not-allowed' : 'pointer'
-          }}
-        >
-          {pushingToDatabase ? 'Pushing...' : 'Push Program to Database'}
-        </button>
-        {pushSuccess && (
-          <p style={{ marginTop: '10px', color: '#16a34a', fontWeight: 600 }}>
-            Program pushed successfully!
-          </p>
         )}
-        {error && (
-          <p style={{ marginTop: '10px', color: '#dc2626', whiteSpace: 'pre-line' }}>
-            {error}
-          </p>
-        )}
-        <div style={{ marginTop: '20px', paddingTop: '16px', borderTop: '1px solid #e5e7eb' }}>
-          <button
-            type="button"
-            onClick={handleSaveToLibrary}
-            disabled={saveToLibraryDisabled}
-            style={{
-              padding: '10px 20px',
-              fontSize: '14px',
-              fontWeight: '600',
-              backgroundColor: saveToLibraryDisabled ? '#e5e7eb' : '#4f46e5',
-              color: saveToLibraryDisabled ? '#9ca3af' : 'white',
-              border: `1px solid ${saveToLibraryDisabled ? '#d1d5db' : '#4f46e5'}`,
-              borderRadius: '6px',
-              cursor: saveToLibraryDisabled ? 'not-allowed' : 'pointer'
-            }}
-          >
-            {savingToLibrary ? 'Saving...' : 'Save Program to Library'}
-          </button>
-          {librarySuccess && (
-            <p style={{ marginTop: '10px', color: '#16a34a', fontWeight: 600 }}>
-              Program saved to the library!
-            </p>
-          )}
-          {libraryError && (
-            <p style={{ marginTop: '10px', color: '#dc2626', whiteSpace: 'pre-line' }}>
-              {libraryError}
-            </p>
-          )}
-        </div>
       </div>
 
-      <ProgramBuilder
-        onChange={setDays}
-        onWeekCountChange={setWeekCount}
-        onRepTargetsChange={setRepTargets}
-        onWeekTotalsChange={setWeekTotals}
-      />
-      <div style={{ marginBottom: '24px' }}>
-      <ProgramPreview
-        weeks={generatedProgram}
-        repTargets={repTargets}
-        weekTotals={weekTotals}
-        selectedDayNumbers={days.map((day) => day.dayNumber)}
-        onToggleDay={handleToggleDay}
-        onDayLabelChange={handleDayLabelChange}
-        onAddExercise={handleAddExercise}
-        onOverrideChange={(dayNumber, exerciseId, field, value, weekNumber) =>
-          setDays((prev) =>
-            applyProgramOverride(prev, dayNumber, exerciseId, field, value, weekNumber)
-          )
-          }
-        onDeleteExercise={handleDeleteExercise}
+      {/* Details Panel (Collapsible) */}
+      {detailsPanelOpen && (
+        <div style={{
+          maxWidth: '1800px',
+          margin: '0 auto',
+          padding: '32px',
+          borderBottom: '1px solid #1e293b',
+          backgroundColor: '#0f1419'
+        }}>
+          <div style={{
+            display: 'grid',
+            gap: '24px',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))'
+          }}>
+            {/* Template Section */}
+            <div style={{
+              padding: '20px',
+              backgroundColor: '#1a1f2e',
+              borderRadius: '12px',
+              border: '1px solid #2d3748'
+            }}>
+              <h3 style={{
+                margin: '0 0 16px',
+                fontSize: '16px',
+                fontWeight: 600,
+                color: '#cbd5e1',
+                letterSpacing: '-0.01em'
+              }}>
+                Preset Template
+              </h3>
+              <div style={{ display: 'grid', gap: '12px' }}>
+                <select
+                  value={selectedTemplate}
+                  onChange={(event) => setSelectedTemplate(event.target.value as ProgramBuilderTemplateId)}
+                  style={{
+                    padding: '12px',
+                    fontSize: '14px',
+                    border: '1px solid #334155',
+                    borderRadius: '8px',
+                    backgroundColor: '#0f1419',
+                    color: '#e2e8f0',
+                    width: '100%'
+                  }}
+                >
+                  {programBuilderTemplateOptions.map((option) => (
+                    <option key={option.id} value={option.id}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  onClick={handleLoadTemplate}
+                  style={{
+                    padding: '12px',
+                    fontSize: '14px',
+                    fontWeight: 600,
+                    backgroundColor: templateActive ? '#14b8a6' : '#0f766e',
+                    color: '#f0fdfa',
+                    border: 'none',
+                    borderRadius: '8px',
+                    cursor: 'pointer',
+                    letterSpacing: '0.01em'
+                  }}
+                >
+                  {templateActive ? 'Reload Template' : 'Load Template'}
+                </button>
+              </div>
+            </div>
+
+            {/* Program Details */}
+            <div style={{
+              padding: '20px',
+              backgroundColor: '#1a1f2e',
+              borderRadius: '12px',
+              border: '1px solid #2d3748'
+            }}>
+              <h3 style={{
+                margin: '0 0 16px',
+                fontSize: '16px',
+                fontWeight: 600,
+                color: '#cbd5e1',
+                letterSpacing: '-0.01em'
+              }}>
+                Program Information
+              </h3>
+              <div style={{ display: 'grid', gap: '14px' }}>
+                <div>
+                  <label style={{
+                    display: 'block',
+                    marginBottom: '6px',
+                    fontSize: '13px',
+                    fontWeight: 600,
+                    color: '#94a3b8',
+                    letterSpacing: '0.01em'
+                  }}>
+                    Athlete Name <span style={{ color: '#f87171' }}>*</span>
+                  </label>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <select
+                      value={athleteName}
+                      onChange={(event) => handleSelectAthlete(event.target.value)}
+                      disabled={athletesFromDb === undefined}
+                      style={{
+                        flex: 1,
+                        padding: '12px',
+                        fontSize: '14px',
+                        border: '1px solid #334155',
+                        borderRadius: '8px',
+                        backgroundColor: athletesFromDb === undefined ? '#1e293b' : '#0f1419',
+                        color: '#e2e8f0',
+                        colorScheme: 'dark'
+                      }}
+                    >
+                      <option value="" style={{ backgroundColor: '#0f1419', color: '#e2e8f0' }}>
+                        {athletesFromDb === undefined ? 'Loading...' : 'Select athlete'}
+                      </option>
+                      {athletes.map((athlete) => (
+                        <option key={athlete} value={athlete} style={{ backgroundColor: '#0f1419', color: '#e2e8f0' }}>
+                          {athlete || 'Unnamed athlete'}
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      type="button"
+                      onClick={() => setShowNewAthleteInput(true)}
+                      disabled={showNewAthleteInput}
+                      style={{
+                        padding: '12px 16px',
+                        fontSize: '13px',
+                        fontWeight: 600,
+                        borderRadius: '8px',
+                        border: '1px solid #334155',
+                        backgroundColor: showNewAthleteInput ? '#1e293b' : '#1e40af',
+                        color: showNewAthleteInput ? '#64748b' : '#e0e7ff',
+                        cursor: showNewAthleteInput ? 'not-allowed' : 'pointer',
+                        whiteSpace: 'nowrap'
+                      }}
+                    >
+                      + New
+                    </button>
+                  </div>
+                  {showNewAthleteInput && (
+                    <div style={{ marginTop: '8px', display: 'flex', gap: '8px' }}>
+                      <input
+                        type="text"
+                        ref={newAthleteInputRef}
+                        value={newAthleteName}
+                        onChange={(event) => setNewAthleteName(event.target.value)}
+                        placeholder="New athlete name"
+                        style={{
+                          flex: 1,
+                          padding: '12px',
+                          fontSize: '14px',
+                          border: '1px solid #334155',
+                          borderRadius: '8px',
+                          backgroundColor: '#0f1419',
+                          color: '#e2e8f0'
+                        }}
+                      />
+                      <button
+                        type="button"
+                        onClick={handleAddNewAthlete}
+                        style={{
+                          padding: '12px 16px',
+                          fontSize: '13px',
+                          fontWeight: 600,
+                          borderRadius: '8px',
+                          border: 'none',
+                          backgroundColor: '#14b8a6',
+                          color: '#f0fdfa',
+                          cursor: 'pointer',
+                          whiteSpace: 'nowrap'
+                        }}
+                      >
+                        Save
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleCancelNewAthlete}
+                        style={{
+                          padding: '12px 16px',
+                          fontSize: '13px',
+                          fontWeight: 600,
+                          borderRadius: '8px',
+                          border: '1px solid #334155',
+                          backgroundColor: 'transparent',
+                          color: '#94a3b8',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  )}
+                  {athleteInputError && (
+                    <p style={{
+                      marginTop: '6px',
+                      marginBottom: 0,
+                      fontSize: '12px',
+                      color: '#f87171'
+                    }}>
+                      {athleteInputError}
+                    </p>
+                  )}
+                </div>
+                <div>
+                  <label style={{
+                    display: 'block',
+                    marginBottom: '6px',
+                    fontSize: '13px',
+                    fontWeight: 600,
+                    color: '#94a3b8',
+                    letterSpacing: '0.01em'
+                  }}>
+                    Program Name <span style={{ color: '#f87171' }}>*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={programName}
+                    onChange={(event) => setProgramName(event.target.value)}
+                    placeholder="Enter program name"
+                    style={{
+                      width: '100%',
+                      padding: '12px',
+                      fontSize: '14px',
+                      border: '1px solid #334155',
+                      borderRadius: '8px',
+                      backgroundColor: '#0f1419',
+                      color: '#e2e8f0'
+                    }}
+                  />
+                </div>
+                <div>
+                  <label style={{
+                    display: 'block',
+                    marginBottom: '6px',
+                    fontSize: '13px',
+                    fontWeight: 600,
+                    color: '#94a3b8',
+                    letterSpacing: '0.01em'
+                  }}>
+                    Start Date <span style={{ color: '#f87171' }}>*</span>
+                  </label>
+                  <input
+                    type="date"
+                    value={startDate}
+                    onChange={(event) => setStartDate(event.target.value)}
+                    style={{
+                      padding: '12px',
+                      fontSize: '14px',
+                      border: '1px solid #334155',
+                      borderRadius: '8px',
+                      backgroundColor: '#0f1419',
+                      color: '#e2e8f0',
+                      colorScheme: 'dark'
+                    }}
+                  />
+                </div>
+              </div>
+              <div style={{ marginTop: '16px', display: 'flex', gap: '12px' }}>
+                <button
+                  type="button"
+                  onClick={handlePushToDatabase}
+                  disabled={pushDisabled}
+                  style={{
+                    flex: 1,
+                    padding: '12px',
+                    fontSize: '14px',
+                    fontWeight: 600,
+                    backgroundColor: pushDisabled ? '#1e293b' : '#1e40af',
+                    color: pushDisabled ? '#64748b' : '#e0e7ff',
+                    border: 'none',
+                    borderRadius: '8px',
+                    cursor: pushDisabled ? 'not-allowed' : 'pointer',
+                    letterSpacing: '0.01em'
+                  }}
+                >
+                  {pushingToDatabase ? 'Pushing...' : 'Push to Database'}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSaveToLibrary}
+                  disabled={saveToLibraryDisabled}
+                  style={{
+                    flex: 1,
+                    padding: '12px',
+                    fontSize: '14px',
+                    fontWeight: 600,
+                    backgroundColor: saveToLibraryDisabled ? '#1e293b' : '#6366f1',
+                    color: saveToLibraryDisabled ? '#64748b' : '#e0e7ff',
+                    border: 'none',
+                    borderRadius: '8px',
+                    cursor: saveToLibraryDisabled ? 'not-allowed' : 'pointer',
+                    letterSpacing: '0.01em'
+                  }}
+                >
+                  {savingToLibrary ? 'Saving...' : 'Save to Library'}
+                </button>
+              </div>
+              {(pushSuccess || librarySuccess) && (
+                <p style={{
+                  marginTop: '12px',
+                  marginBottom: 0,
+                  fontSize: '13px',
+                  color: '#5eead4',
+                  fontWeight: 600
+                }}>
+                  {pushSuccess && 'Program pushed successfully!'}
+                  {librarySuccess && 'Program saved to library!'}
+                </p>
+              )}
+              {(error || libraryError) && (
+                <p style={{
+                  marginTop: '12px',
+                  marginBottom: 0,
+                  fontSize: '13px',
+                  color: '#fca5a5',
+                  whiteSpace: 'pre-line'
+                }}>
+                  {error || libraryError}
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Main Content */}
+      <div style={{
+        maxWidth: '1800px',
+        margin: '0 auto',
+        padding: '32px'
+      }}>
+        <ProgramBuilder
+          onChange={setDays}
+          onWeekCountChange={setWeekCount}
+          onRepTargetsChange={setRepTargets}
+          onWeekTotalsChange={setWeekTotals}
         />
+        <div style={{ marginTop: '32px' }}>
+          <ProgramPreview
+            weeks={filteredWeeks}
+            repTargets={repTargets}
+            weekTotals={weekTotals}
+            selectedDayNumbers={days.map((day) => day.dayNumber)}
+            onToggleDay={handleToggleDay}
+            onDayLabelChange={handleDayLabelChange}
+            onAddExercise={handleAddExercise}
+            onOverrideChange={(dayNumber, exerciseId, field, value, weekNumber) =>
+              setDays((prev) =>
+                applyProgramOverride(prev, dayNumber, exerciseId, field, value, weekNumber)
+              )
+            }
+            onDeleteExercise={handleDeleteExercise}
+          />
+        </div>
       </div>
     </div>
   )

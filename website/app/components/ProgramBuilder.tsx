@@ -194,31 +194,40 @@ export default function ProgramBuilder({
   }, [weekTotals, onWeekTotalsChange])
 
   return (
-    <div style={{ marginBottom: '20px' }}>
-      <h2 style={{ marginBottom: '15px', fontSize: '18px', color: '#333' }}>Program Builder</h2>
-
-      <div style={{ display: 'grid', gap: '20px' }}>
+    <div style={{ marginBottom: '32px' }}>
+      <div style={{ display: 'grid', gap: '24px' }}>
         <div
           style={{
             display: 'grid',
-            gap: '16px',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
+            gap: '20px',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(380px, 1fr))',
             alignItems: 'start'
           }}
         >
       <div style={{
-        marginBottom: '20px',
-        padding: '16px',
-        borderRadius: '10px',
-        border: '1px solid #e2e8f0',
-        backgroundColor: '#fff'
+        padding: '24px',
+        borderRadius: '12px',
+        border: '1px solid #2d3748',
+        backgroundColor: '#1a1f2e'
       }}>
-        <h3 style={{ marginTop: 0, marginBottom: '12px', fontSize: '16px', color: '#1f2937' }}>
+        <h3 style={{
+          marginTop: 0,
+          marginBottom: '16px',
+          fontSize: '16px',
+          fontWeight: 600,
+          color: '#cbd5e1',
+          letterSpacing: '-0.01em'
+        }}>
           Weekly Total Reps
         </h3>
-        <div style={{ marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <label style={{ fontSize: '13px', color: '#475569' }}>
-            Program length (weeks)
+        <div style={{ marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <label style={{
+            fontSize: '13px',
+            fontWeight: 600,
+            color: '#94a3b8',
+            letterSpacing: '0.01em'
+          }}>
+            Program Length (weeks)
           </label>
           <input
             type="number"
@@ -228,10 +237,12 @@ export default function ProgramBuilder({
             onChange={(event) => handleWeekCountChange(event.target.value)}
             style={{
               width: '80px',
-              padding: '6px',
-              borderRadius: '6px',
-              border: '1px solid #d1d5db',
-              fontSize: '14px'
+              padding: '10px',
+              borderRadius: '8px',
+              border: '1px solid #334155',
+              fontSize: '14px',
+              backgroundColor: '#0f1419',
+              color: '#e2e8f0'
             }}
           />
         </div>
@@ -244,15 +255,22 @@ export default function ProgramBuilder({
               <div
                 key={weekNumber}
                 style={{
-                  padding: '10px',
-                  borderRadius: '6px',
-                  border: '1px solid #e2e8f0',
-                  backgroundColor: '#f8fafc',
+                  padding: '12px',
+                  borderRadius: '8px',
+                  border: '1px solid #334155',
+                  backgroundColor: '#0f1419',
                   display: 'grid',
-                  gap: '6px'
+                  gap: '8px'
                 }}
               >
-                <strong style={{ color: '#334155' }}>Week {weekNumber}</strong>
+                <strong style={{
+                  color: '#cbd5e1',
+                  fontSize: '13px',
+                  fontWeight: 600,
+                  letterSpacing: '0.01em'
+                }}>
+                  Week {weekNumber}
+                </strong>
                 {weekNumber === 1 ? (
                   <input
                     type="text"
@@ -261,11 +279,12 @@ export default function ProgramBuilder({
                     placeholder="Total reps"
                     inputMode="numeric"
                     style={{
-                      padding: '8px',
-                      borderRadius: '6px',
-                      border: '1px solid #d1d5db',
+                      padding: '10px',
+                      borderRadius: '8px',
+                      border: '1px solid #334155',
                       fontSize: '14px',
-                      backgroundColor: '#fff'
+                      backgroundColor: '#0a0f1a',
+                      color: '#e2e8f0'
                     }}
                   />
                 ) : isEditing ? (
@@ -285,17 +304,24 @@ export default function ProgramBuilder({
                     placeholder="Override total reps"
                     inputMode="numeric"
                     style={{
-                      padding: '8px',
-                      borderRadius: '6px',
-                      border: '1px solid #d1d5db',
+                      padding: '10px',
+                      borderRadius: '8px',
+                      border: '1px solid #334155',
                       fontSize: '14px',
-                      backgroundColor: '#fff'
+                      backgroundColor: '#0a0f1a',
+                      color: '#e2e8f0'
                     }}
                     autoFocus
                   />
                 ) : (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <span style={{ color: '#1f2937', fontSize: '14px' }}>{currentValue || '—'}</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{
+                      color: '#e2e8f0',
+                      fontSize: '14px',
+                      fontWeight: 500
+                    }}>
+                      {currentValue || '—'}
+                    </span>
                     {isEditable && (
                       <button
                         type="button"
@@ -306,26 +332,27 @@ export default function ProgramBuilder({
                         style={{
                           padding: '4px',
                           borderRadius: '6px',
-                          border: '1px solid #e2e8f0',
-                          backgroundColor: '#fff',
+                          border: '1px solid #334155',
+                          backgroundColor: '#0a0f1a',
                           cursor: 'pointer',
                           display: 'flex',
                           alignItems: 'center',
-                          justifyContent: 'center'
+                          justifyContent: 'center',
+                          transition: 'all 0.2s'
                         }}
                         aria-label={`Edit week ${weekNumber} total reps`}
                       >
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
                           <path
                             d="M4 20h4l11-11-4-4L4 16v4z"
-                            stroke="#475569"
+                            stroke="#94a3b8"
                             strokeWidth="1.5"
                             strokeLinecap="round"
                             strokeLinejoin="round"
                           />
                           <path
                             d="M13 6l4 4"
-                            stroke="#475569"
+                            stroke="#94a3b8"
                             strokeWidth="1.5"
                             strokeLinecap="round"
                             strokeLinejoin="round"
@@ -336,7 +363,12 @@ export default function ProgramBuilder({
                   </div>
                 )}
                 {weekNumber > 1 && (
-                  <span style={{ fontSize: '12px', color: '#64748b' }}>
+                  <span style={{
+                    fontSize: '11px',
+                    color: '#64748b',
+                    fontWeight: 500,
+                    letterSpacing: '0.02em'
+                  }}>
                     {weekNumber === 2 && '+10% of week 1'}
                     {weekNumber === 3 && '-10% of week 1'}
                     {weekNumber === 4 && 'Same as week 1'}
@@ -350,13 +382,19 @@ export default function ProgramBuilder({
       </div>
 
       <div style={{
-        marginBottom: '20px',
-        padding: '16px',
-        borderRadius: '10px',
-        border: '1px solid #e2e8f0',
-        backgroundColor: '#fff'
+        padding: '24px',
+        borderRadius: '12px',
+        border: '1px solid #2d3748',
+        backgroundColor: '#1a1f2e'
       }}>
-        <h3 style={{ marginTop: 0, marginBottom: '12px', fontSize: '16px', color: '#1f2937' }}>
+        <h3 style={{
+          marginTop: 0,
+          marginBottom: '16px',
+          fontSize: '16px',
+          fontWeight: 600,
+          color: '#cbd5e1',
+          letterSpacing: '-0.01em'
+        }}>
           Rep Targets (% of weekly total)
         </h3>
         <div style={{ display: 'grid', gap: '10px', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))' }}>
@@ -367,7 +405,14 @@ export default function ProgramBuilder({
             { key: 'squat', label: 'Squat' },
             { key: 'pull', label: 'Pull' }
           ].map((item) => (
-            <label key={item.key} style={{ display: 'grid', gap: '6px', fontSize: '13px', color: '#475569' }}>
+            <label key={item.key} style={{
+              display: 'grid',
+              gap: '8px',
+              fontSize: '13px',
+              fontWeight: 600,
+              color: '#94a3b8',
+              letterSpacing: '0.01em'
+            }}>
               {item.label}
               <input
                 type="text"
@@ -378,59 +423,132 @@ export default function ProgramBuilder({
                 placeholder="Percent"
                 inputMode="decimal"
                 style={{
-                  padding: '8px',
-                  borderRadius: '6px',
-                  border: '1px solid #d1d5db',
-                  fontSize: '14px'
+                  padding: '10px',
+                  borderRadius: '8px',
+                  border: '1px solid #334155',
+                  fontSize: '14px',
+                  backgroundColor: '#0f1419',
+                  color: '#e2e8f0'
                 }}
               />
             </label>
           ))}
         </div>
         <div style={{
-          marginTop: '12px',
+          marginTop: '16px',
           display: 'grid',
-          gap: '8px',
+          gap: '10px',
           gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-          color: '#1f2937',
-          fontSize: '14px'
+          fontSize: '13px'
         }}>
-          <div style={{ padding: '8px 10px', borderRadius: '6px', backgroundColor: '#f8fafc', border: '1px solid #e2e8f0' }}>
-            <strong>Lifts % total:</strong> {formatNumber(liftPercentTotal)}
+          <div style={{
+            padding: '10px 14px',
+            borderRadius: '8px',
+            backgroundColor: '#0f1419',
+            border: '1px solid #334155',
+            color: '#cbd5e1'
+          }}>
+            <strong style={{ fontWeight: 600 }}>Lifts % total:</strong> {formatNumber(liftPercentTotal)}
           </div>
-          <div style={{ padding: '8px 10px', borderRadius: '6px', backgroundColor: '#f8fafc', border: '1px solid #e2e8f0' }}>
-            <strong>Strength % total:</strong> {formatNumber(strengthPercentTotal)}
+          <div style={{
+            padding: '10px 14px',
+            borderRadius: '8px',
+            backgroundColor: '#0f1419',
+            border: '1px solid #334155',
+            color: '#cbd5e1'
+          }}>
+            <strong style={{ fontWeight: 600 }}>Strength % total:</strong> {formatNumber(strengthPercentTotal)}
           </div>
           <div
             style={{
-              padding: '8px 10px',
-              borderRadius: '6px',
-              backgroundColor: '#f8fafc',
-              border: '1px solid #e2e8f0',
-              color: isTotalPercentMismatch ? '#dc2626' : '#1f2937',
-              fontWeight: isTotalPercentMismatch ? 600 : 400
+              padding: '10px 14px',
+              borderRadius: '8px',
+              backgroundColor: '#0f1419',
+              border: isTotalPercentMismatch ? '1px solid #f87171' : '1px solid #334155',
+              color: isTotalPercentMismatch ? '#fca5a5' : '#cbd5e1',
+              fontWeight: isTotalPercentMismatch ? 600 : 500
             }}
           >
-            <strong>Total %:</strong> {formatNumber(totalPercent)}
+            <strong style={{ fontWeight: 600 }}>Total %:</strong> {formatNumber(totalPercent)}
           </div>
         </div>
-        <div style={{ marginTop: '14px' }}>
-          <h4 style={{ margin: '0 0 8px', fontSize: '14px', color: '#334155' }}>
-            Weekly rep targets
+        <div style={{ marginTop: '20px' }}>
+          <h4 style={{
+            margin: '0 0 12px',
+            fontSize: '14px',
+            fontWeight: 600,
+            color: '#cbd5e1',
+            letterSpacing: '0.01em'
+          }}>
+            Weekly Rep Targets
           </h4>
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
               <thead>
-                <tr style={{ backgroundColor: '#f1f5f9', textAlign: 'left' }}>
-                  <th style={{ padding: '8px', border: '1px solid #e2e8f0' }}>Week</th>
-                  <th style={{ padding: '8px', border: '1px solid #e2e8f0' }}>Total</th>
-                  <th style={{ padding: '8px', border: '1px solid #e2e8f0' }}>Snatch</th>
-                  <th style={{ padding: '8px', border: '1px solid #e2e8f0' }}>Clean</th>
-                  <th style={{ padding: '8px', border: '1px solid #e2e8f0' }}>Jerk</th>
-                  <th style={{ padding: '8px', border: '1px solid #e2e8f0' }}>Squat</th>
-                  <th style={{ padding: '8px', border: '1px solid #e2e8f0' }}>Pull</th>
-                  <th style={{ padding: '8px', border: '1px solid #e2e8f0' }}>Lifts</th>
-                  <th style={{ padding: '8px', border: '1px solid #e2e8f0' }}>Strength</th>
+                <tr style={{ backgroundColor: '#0f1419', textAlign: 'left' }}>
+                  <th style={{
+                    padding: '10px 12px',
+                    border: '1px solid #334155',
+                    color: '#94a3b8',
+                    fontWeight: 600,
+                    letterSpacing: '0.01em'
+                  }}>Week</th>
+                  <th style={{
+                    padding: '10px 12px',
+                    border: '1px solid #334155',
+                    color: '#94a3b8',
+                    fontWeight: 600,
+                    letterSpacing: '0.01em'
+                  }}>Total</th>
+                  <th style={{
+                    padding: '10px 12px',
+                    border: '1px solid #334155',
+                    color: '#94a3b8',
+                    fontWeight: 600,
+                    letterSpacing: '0.01em'
+                  }}>Snatch</th>
+                  <th style={{
+                    padding: '10px 12px',
+                    border: '1px solid #334155',
+                    color: '#94a3b8',
+                    fontWeight: 600,
+                    letterSpacing: '0.01em'
+                  }}>Clean</th>
+                  <th style={{
+                    padding: '10px 12px',
+                    border: '1px solid #334155',
+                    color: '#94a3b8',
+                    fontWeight: 600,
+                    letterSpacing: '0.01em'
+                  }}>Jerk</th>
+                  <th style={{
+                    padding: '10px 12px',
+                    border: '1px solid #334155',
+                    color: '#94a3b8',
+                    fontWeight: 600,
+                    letterSpacing: '0.01em'
+                  }}>Squat</th>
+                  <th style={{
+                    padding: '10px 12px',
+                    border: '1px solid #334155',
+                    color: '#94a3b8',
+                    fontWeight: 600,
+                    letterSpacing: '0.01em'
+                  }}>Pull</th>
+                  <th style={{
+                    padding: '10px 12px',
+                    border: '1px solid #334155',
+                    color: '#94a3b8',
+                    fontWeight: 600,
+                    letterSpacing: '0.01em'
+                  }}>Lifts</th>
+                  <th style={{
+                    padding: '10px 12px',
+                    border: '1px solid #334155',
+                    color: '#94a3b8',
+                    fontWeight: 600,
+                    letterSpacing: '0.01em'
+                  }}>Strength</th>
                 </tr>
               </thead>
               <tbody>
@@ -462,19 +580,64 @@ export default function ProgramBuilder({
 
                   return (
                     <tr key={weekNumber}>
-                      <td style={{ padding: '8px', border: '1px solid #e2e8f0' }}>Week {weekNumber}</td>
-                      <td style={{ padding: '8px', border: '1px solid #e2e8f0' }}>
+                      <td style={{
+                        padding: '10px 12px',
+                        border: '1px solid #334155',
+                        color: '#e2e8f0',
+                        backgroundColor: '#1a1f2e'
+                      }}>Week {weekNumber}</td>
+                      <td style={{
+                        padding: '10px 12px',
+                        border: '1px solid #334155',
+                        color: '#cbd5e1',
+                        backgroundColor: '#1a1f2e'
+                      }}>
                         {total === null ? '—' : formatNumber(total)}
                       </td>
-                      <td style={{ padding: '8px', border: '1px solid #e2e8f0' }}>{formatValue(snatch)}</td>
-                      <td style={{ padding: '8px', border: '1px solid #e2e8f0' }}>{formatValue(clean)}</td>
-                      <td style={{ padding: '8px', border: '1px solid #e2e8f0' }}>{formatValue(jerk)}</td>
-                      <td style={{ padding: '8px', border: '1px solid #e2e8f0' }}>{formatValue(squat)}</td>
-                      <td style={{ padding: '8px', border: '1px solid #e2e8f0' }}>{formatValue(pull)}</td>
-                      <td style={{ padding: '8px', border: '1px solid #e2e8f0' }}>
+                      <td style={{
+                        padding: '10px 12px',
+                        border: '1px solid #334155',
+                        color: '#cbd5e1',
+                        backgroundColor: '#1a1f2e'
+                      }}>{formatValue(snatch)}</td>
+                      <td style={{
+                        padding: '10px 12px',
+                        border: '1px solid #334155',
+                        color: '#cbd5e1',
+                        backgroundColor: '#1a1f2e'
+                      }}>{formatValue(clean)}</td>
+                      <td style={{
+                        padding: '10px 12px',
+                        border: '1px solid #334155',
+                        color: '#cbd5e1',
+                        backgroundColor: '#1a1f2e'
+                      }}>{formatValue(jerk)}</td>
+                      <td style={{
+                        padding: '10px 12px',
+                        border: '1px solid #334155',
+                        color: '#cbd5e1',
+                        backgroundColor: '#1a1f2e'
+                      }}>{formatValue(squat)}</td>
+                      <td style={{
+                        padding: '10px 12px',
+                        border: '1px solid #334155',
+                        color: '#cbd5e1',
+                        backgroundColor: '#1a1f2e'
+                      }}>{formatValue(pull)}</td>
+                      <td style={{
+                        padding: '10px 12px',
+                        border: '1px solid #334155',
+                        color: '#cbd5e1',
+                        backgroundColor: '#1a1f2e'
+                      }}>
                         {total === null ? '—' : formatNumber(lifts)}
                       </td>
-                      <td style={{ padding: '8px', border: '1px solid #e2e8f0' }}>
+                      <td style={{
+                        padding: '10px 12px',
+                        border: '1px solid #334155',
+                        color: '#cbd5e1',
+                        backgroundColor: '#1a1f2e'
+                      }}>
                         {total === null ? '—' : formatNumber(strength)}
                       </td>
                     </tr>
@@ -487,18 +650,6 @@ export default function ProgramBuilder({
       </div>
         </div>
 
-        <div
-          style={{
-            padding: '16px',
-            borderRadius: '10px',
-            border: '1px solid #e2e8f0',
-            backgroundColor: '#fff'
-          }}
-        >
-          <p style={{ marginBottom: '10px', fontWeight: '600', color: '#555' }}>
-            Select training days in the preview section to build your template.
-          </p>
-        </div>
       </div>
     </div>
   )

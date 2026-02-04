@@ -344,15 +344,21 @@ export default function ProgramPreview({
         {onToggleDay && (
           <div
             style={{
-              marginBottom: '16px',
-              padding: '14px 16px',
-              borderRadius: '10px',
-              border: '1px solid #e2e8f0',
-              backgroundColor: '#fff'
+              marginBottom: '20px',
+              padding: '24px',
+              borderRadius: '12px',
+              border: '1px solid #2d3748',
+              backgroundColor: '#1a1f2e'
             }}
           >
-            <p style={{ marginBottom: '10px', fontWeight: '600', color: '#555' }}>
-              Select training days
+            <p style={{
+              marginBottom: '16px',
+              fontWeight: 600,
+              fontSize: '15px',
+              color: '#cbd5e1',
+              letterSpacing: '-0.01em'
+            }}>
+              Select Training Days
             </p>
             <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
               {dayOptions.map((dayNumber) => {
@@ -363,20 +369,24 @@ export default function ProgramPreview({
                     style={{
                       display: 'flex',
                       alignItems: 'center',
-                      gap: '6px',
-                      padding: '6px 10px',
-                      borderRadius: '6px',
-                      border: checked ? '1px solid #2563eb' : '1px solid #d1d5db',
-                      backgroundColor: checked ? '#eff6ff' : '#fff',
+                      gap: '8px',
+                      padding: '10px 16px',
+                      borderRadius: '8px',
+                      border: checked ? '1px solid #14b8a6' : '1px solid #334155',
+                      backgroundColor: checked ? '#0f766e' : '#0f1419',
                       cursor: 'pointer',
-                      fontSize: '14px'
+                      fontSize: '14px',
+                      fontWeight: 500,
+                      color: checked ? '#ccfbf1' : '#94a3b8',
+                      transition: 'all 0.2s',
+                      letterSpacing: '0.01em'
                     }}
                   >
                     <input
                       type="checkbox"
                       checked={checked}
                       onChange={() => onToggleDay(dayNumber)}
-                      style={{ accentColor: '#2563eb' }}
+                      style={{ accentColor: '#14b8a6' }}
                     />
                     Day {dayNumber}
                   </label>
@@ -387,15 +397,18 @@ export default function ProgramPreview({
         )}
         <div
           style={{
-            padding: '20px',
-            borderRadius: '8px',
-            border: '1px dashed #cbd5f5',
-            backgroundColor: '#f8fafc',
+            padding: '32px',
+            borderRadius: '12px',
+            border: '1px dashed #334155',
+            backgroundColor: '#1a1f2e',
             color: '#64748b',
-            fontSize: '14px'
+            fontSize: '14px',
+            textAlign: 'center',
+            fontWeight: 500,
+            letterSpacing: '0.01em'
           }}
         >
-          Select training days and add exercises to preview the generated 4-week program.
+          Select training days and add exercises to build your program
         </div>
       </div>
     )
@@ -403,21 +416,24 @@ export default function ProgramPreview({
 
   return (
     <div>
-      <h3 style={{ marginBottom: '12px', fontSize: '16px', color: '#1f2937' }}>
-        4-Week Program Preview
-      </h3>
       {onToggleDay && (
         <div
           style={{
-            marginBottom: '16px',
-            padding: '14px 16px',
-            borderRadius: '10px',
-            border: '1px solid #e2e8f0',
-            backgroundColor: '#fff'
+            marginBottom: '24px',
+            padding: '24px',
+            borderRadius: '12px',
+            border: '1px solid #2d3748',
+            backgroundColor: '#1a1f2e'
           }}
         >
-          <p style={{ marginBottom: '10px', fontWeight: '600', color: '#555' }}>
-            Select training days
+          <p style={{
+            marginBottom: '16px',
+            fontWeight: 600,
+            fontSize: '15px',
+            color: '#cbd5e1',
+            letterSpacing: '-0.01em'
+          }}>
+            Select Training Days
           </p>
           <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
             {dayOptions.map((dayNumber) => {
@@ -428,20 +444,24 @@ export default function ProgramPreview({
                   style={{
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '6px',
-                    padding: '6px 10px',
-                    borderRadius: '6px',
-                    border: checked ? '1px solid #2563eb' : '1px solid #d1d5db',
-                    backgroundColor: checked ? '#eff6ff' : '#fff',
+                    gap: '8px',
+                    padding: '10px 16px',
+                    borderRadius: '8px',
+                    border: checked ? '1px solid #14b8a6' : '1px solid #334155',
+                    backgroundColor: checked ? '#0f766e' : '#0f1419',
                     cursor: 'pointer',
-                    fontSize: '14px'
+                    fontSize: '14px',
+                    fontWeight: 500,
+                    color: checked ? '#ccfbf1' : '#94a3b8',
+                    transition: 'all 0.2s',
+                    letterSpacing: '0.01em'
                   }}
                 >
                   <input
                     type="checkbox"
                     checked={checked}
                     onChange={() => onToggleDay(dayNumber)}
-                    style={{ accentColor: '#2563eb' }}
+                    style={{ accentColor: '#14b8a6' }}
                   />
                   Day {dayNumber}
                 </label>
@@ -454,14 +474,21 @@ export default function ProgramPreview({
         <div
           key={week.weekNumber}
           style={{
-            marginBottom: '18px',
-            padding: '16px',
-            borderRadius: '10px',
-            border: '1px solid #e2e8f0',
-            backgroundColor: '#fff'
+            marginBottom: '24px',
+            padding: '24px',
+            borderRadius: '12px',
+            border: '1px solid #2d3748',
+            backgroundColor: '#1a1f2e'
           }}
         >
-          <h4 style={{ marginTop: 0, marginBottom: '12px', color: '#334155' }}>
+          <h4 style={{
+            marginTop: 0,
+            marginBottom: '20px',
+            fontSize: '18px',
+            fontWeight: 600,
+            color: '#f1f5f9',
+            letterSpacing: '-0.02em'
+          }}>
             Week {week.weekNumber}
           </h4>
           {week.days.map((day) => (
@@ -475,21 +502,36 @@ export default function ProgramPreview({
                   flexWrap: 'wrap'
                 }}
               >
-                <p style={{ margin: 0, fontWeight: '600', color: '#475569' }}>
+                <p style={{
+                  margin: 0,
+                  fontWeight: 600,
+                  fontSize: '15px',
+                  color: '#cbd5e1',
+                  letterSpacing: '-0.01em'
+                }}>
                   Day {day.dayNumber}
                 </p>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', color: '#64748b' }}>
+                <label style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  fontSize: '13px',
+                  fontWeight: 500,
+                  color: '#94a3b8',
+                  letterSpacing: '0.01em'
+                }}>
                   Day of week
                   <select
                     value={day.dayLabel ?? ''}
                     onChange={(event) => onDayLabelChange?.(day.dayNumber, event.target.value)}
                     disabled={!onDayLabelChange}
                     style={{
-                      padding: '6px',
-                      borderRadius: '6px',
-                      border: '1px solid #d1d5db',
+                      padding: '8px 12px',
+                      borderRadius: '8px',
+                      border: '1px solid #334155',
                       fontSize: '13px',
-                      backgroundColor: onDayLabelChange ? '#fff' : '#f8fafc'
+                      backgroundColor: onDayLabelChange ? '#0f1419' : '#1e293b',
+                      color: '#e2e8f0'
                     }}
                   >
                     <option value="">Unassigned</option>
@@ -505,28 +547,62 @@ export default function ProgramPreview({
                     type="button"
                     onClick={() => onAddExercise(day.dayNumber)}
                     style={{
-                      padding: '6px 10px',
-                      borderRadius: '6px',
-                      border: '1px solid #e2e8f0',
-                      backgroundColor: '#f8fafc',
-                      color: '#475569',
+                      padding: '8px 16px',
+                      borderRadius: '8px',
+                      border: '1px solid #14b8a6',
+                      backgroundColor: '#0f766e',
+                      color: '#ccfbf1',
                       cursor: 'pointer',
-                      fontSize: '12px'
+                      fontSize: '13px',
+                      fontWeight: 600,
+                      letterSpacing: '0.01em',
+                      transition: 'all 0.2s'
                     }}
                   >
-                    + Add exercise
+                    + Add Exercise
                   </button>
                 )}
               </div>
-              <div className="table-scroll">
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px' }}>
+              <div className="table-scroll" style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
                   <thead>
-                    <tr style={{ backgroundColor: '#f1f5f9', textAlign: 'left' }}>
-                      <th style={{ padding: '8px', border: '1px solid #e2e8f0', width: '260px' }}>Exercise</th>
-                      <th style={{ padding: '8px', border: '1px solid #e2e8f0' }}>Set</th>
-                      <th style={{ padding: '8px', border: '1px solid #e2e8f0' }}>Intensity</th>
-                      <th style={{ padding: '8px', border: '1px solid #e2e8f0' }}>Reps</th>
-                      <th style={{ padding: '8px', border: '1px solid #e2e8f0' }}>Data</th>
+                    <tr style={{ backgroundColor: '#0f1419', textAlign: 'left' }}>
+                      <th style={{
+                        padding: '12px',
+                        border: '1px solid #334155',
+                        width: '280px',
+                        color: '#94a3b8',
+                        fontWeight: 600,
+                        letterSpacing: '0.01em'
+                      }}>Exercise</th>
+                      <th style={{
+                        padding: '12px',
+                        border: '1px solid #334155',
+                        color: '#94a3b8',
+                        fontWeight: 600,
+                        letterSpacing: '0.01em'
+                      }}>Set</th>
+                      <th style={{
+                        padding: '12px',
+                        border: '1px solid #334155',
+                        color: '#94a3b8',
+                        fontWeight: 600,
+                        letterSpacing: '0.01em'
+                      }}>Intensity</th>
+                      <th style={{
+                        padding: '12px',
+                        border: '1px solid #334155',
+                        color: '#94a3b8',
+                        fontWeight: 600,
+                        letterSpacing: '0.01em'
+                      }}>Reps</th>
+                      <th style={{
+                        padding: '12px',
+                        border: '1px solid #334155',
+                        color: '#94a3b8',
+                        fontWeight: 600,
+                        letterSpacing: '0.01em'
+                      }}>Data</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -556,11 +632,12 @@ export default function ProgramPreview({
                               <td
                                 rowSpan={setCount}
                                 style={{
-                                  padding: '8px',
-                                  border: '1px solid #e2e8f0',
+                                  padding: '12px',
+                                  border: '1px solid #334155',
                                   verticalAlign: 'top',
-                                  width: '260px',
-                                  maxWidth: '260px'
+                                  width: '280px',
+                                  maxWidth: '280px',
+                                  backgroundColor: '#0f1419'
                                 }}
                               >
                                 {onOverrideChange ? (
@@ -587,11 +664,13 @@ export default function ProgramPreview({
                                         }}
                                         style={{
                                           width: '100%',
-                                          padding: '6px',
-                                          borderRadius: '6px',
-                                          border: '1px solid #d1d5db',
+                                          padding: '8px',
+                                          borderRadius: '8px',
+                                          border: '1px solid #334155',
                                           fontSize: '13px',
-                                          marginBottom: '6px'
+                                          marginBottom: '8px',
+                                          backgroundColor: '#0a0f1a',
+                                          color: '#e2e8f0'
                                         }}
                                         autoFocus
                                       />
@@ -795,17 +874,20 @@ export default function ProgramPreview({
                                         )
                                       }
                                       style={{
-                                        padding: '6px 8px',
-                                        borderRadius: '6px',
-                                        border: '1px solid #e2e8f0',
-                                        backgroundColor: '#f8fafc',
-                                        color: '#475569',
+                                        padding: '8px 12px',
+                                        borderRadius: '8px',
+                                        border: '1px solid #334155',
+                                        backgroundColor: '#0f766e',
+                                        color: '#ccfbf1',
                                         cursor: 'pointer',
                                         fontSize: '12px',
-                                        width: 'fit-content'
+                                        fontWeight: 600,
+                                        width: 'fit-content',
+                                        transition: 'all 0.2s',
+                                        letterSpacing: '0.01em'
                                       }}
                                     >
-                                      + Add set
+                                      + Add Set
                                     </button>
                                     <button
                                       type="button"
@@ -821,43 +903,58 @@ export default function ProgramPreview({
                                       }
                                       disabled={setCount <= 1}
                                       style={{
-                                        padding: '6px 8px',
-                                        borderRadius: '6px',
-                                        border: '1px solid #e2e8f0',
-                                        backgroundColor: setCount <= 1 ? '#f1f5f9' : '#fff',
-                                        color: setCount <= 1 ? '#94a3b8' : '#475569',
+                                        padding: '8px 12px',
+                                        borderRadius: '8px',
+                                        border: '1px solid #334155',
+                                        backgroundColor: setCount <= 1 ? '#1e293b' : '#0a0f1a',
+                                        color: setCount <= 1 ? '#64748b' : '#94a3b8',
                                         cursor: setCount <= 1 ? 'not-allowed' : 'pointer',
                                         fontSize: '12px',
-                                        width: 'fit-content'
+                                        fontWeight: 600,
+                                        width: 'fit-content',
+                                        transition: 'all 0.2s',
+                                        letterSpacing: '0.01em'
                                       }}
                                     >
-                                      Remove set
+                                      - Remove Set
                                     </button>
                                     <button
                                       type="button"
                                       onClick={() => onDeleteExercise?.(day.dayNumber, exercise.id)}
                                       disabled={!onDeleteExercise}
                                       style={{
-                                        padding: '6px 8px',
-                                        borderRadius: '6px',
-                                        border: '1px solid #fecaca',
-                                        backgroundColor: onDeleteExercise ? '#fee2e2' : '#fef2f2',
-                                        color: onDeleteExercise ? '#b91c1c' : '#fca5a5',
+                                        padding: '8px 12px',
+                                        borderRadius: '8px',
+                                        border: '1px solid #991b1b',
+                                        backgroundColor: onDeleteExercise ? '#7f1d1d' : '#1e293b',
+                                        color: onDeleteExercise ? '#fca5a5' : '#64748b',
                                         cursor: onDeleteExercise ? 'pointer' : 'not-allowed',
                                         fontSize: '12px',
-                                        width: 'fit-content'
+                                        fontWeight: 600,
+                                        width: 'fit-content',
+                                        transition: 'all 0.2s',
+                                        letterSpacing: '0.01em'
                                       }}
                                     >
-                                      Delete exercise
+                                      Delete Exercise
                                     </button>
                                   </div>
                                 )}
                               </td>
                             )}
-                            <td style={{ padding: '8px', border: '1px solid #e2e8f0' }}>
+                            <td style={{
+                              padding: '12px',
+                              border: '1px solid #334155',
+                              backgroundColor: '#1a1f2e',
+                              color: '#cbd5e1'
+                            }}>
                               Set {setIndex + 1}
                             </td>
-                            <td style={{ padding: '8px', border: '1px solid #e2e8f0' }}>
+                            <td style={{
+                              padding: '12px',
+                              border: '1px solid #334155',
+                              backgroundColor: '#1a1f2e'
+                            }}>
                               {onOverrideChange ? (
                                 <input
                                   type="text"
@@ -895,11 +992,13 @@ export default function ProgramPreview({
                                   }}
                                   style={{
                                     width: '100%',
-                                    padding: '6px',
-                                    borderRadius: '6px',
-                                    border: '1px solid #d1d5db',
+                                    padding: '8px',
+                                    borderRadius: '8px',
+                                    border: '1px solid #334155',
                                     fontSize: '13px',
-                                    boxSizing: 'border-box'
+                                    boxSizing: 'border-box',
+                                    backgroundColor: '#0a0f1a',
+                                    color: '#e2e8f0'
                                   }}
                                 />
                               ) : (
@@ -927,11 +1026,13 @@ export default function ProgramPreview({
                                   }
                                   style={{
                                     width: '100%',
-                                    padding: '6px',
-                                    borderRadius: '6px',
-                                    border: '1px solid #d1d5db',
+                                    padding: '8px',
+                                    borderRadius: '8px',
+                                    border: '1px solid #334155',
                                     fontSize: '13px',
-                                    boxSizing: 'border-box'
+                                    boxSizing: 'border-box',
+                                    backgroundColor: '#0a0f1a',
+                                    color: '#e2e8f0'
                                   }}
                                 />
                               ) : (
@@ -941,7 +1042,12 @@ export default function ProgramPreview({
                             {isFirstRow && (
                               <td
                                 rowSpan={setCount}
-                                style={{ padding: '8px', border: '1px solid #e2e8f0', verticalAlign: 'top' }}
+                                style={{
+                                  padding: '12px',
+                                  border: '1px solid #334155',
+                                  verticalAlign: 'top',
+                                  backgroundColor: '#0f1419'
+                                }}
                               >
                                 <div style={{ display: 'grid', gap: '6px', marginBottom: '10px' }}>
                                   <label style={{ fontSize: '12px', color: '#64748b' }}>
@@ -1080,20 +1186,44 @@ export default function ProgramPreview({
           ))}
           {repTargets && weekTotals && (
             <div style={{
-              marginTop: '10px',
-              paddingTop: '12px',
-              borderTop: '1px solid #e2e8f0'
+              marginTop: '16px',
+              paddingTop: '16px',
+              borderTop: '1px solid #334155'
             }}>
-              <h5 style={{ margin: '0 0 8px', fontSize: '13px', color: '#475569' }}>
-                Weekly category reps vs target
+              <h5 style={{
+                margin: '0 0 12px',
+                fontSize: '14px',
+                fontWeight: 600,
+                color: '#cbd5e1',
+                letterSpacing: '0.01em'
+              }}>
+                Weekly Category Reps vs Target
               </h5>
               <div style={{ overflowX: 'auto' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
                   <thead>
-                    <tr style={{ backgroundColor: '#f8fafc', textAlign: 'left' }}>
-                      <th style={{ padding: '6px', border: '1px solid #e2e8f0' }}>Category</th>
-                      <th style={{ padding: '6px', border: '1px solid #e2e8f0' }}>Actual</th>
-                      <th style={{ padding: '6px', border: '1px solid #e2e8f0' }}>Target</th>
+                    <tr style={{ backgroundColor: '#0f1419', textAlign: 'left' }}>
+                      <th style={{
+                        padding: '10px 12px',
+                        border: '1px solid #334155',
+                        color: '#94a3b8',
+                        fontWeight: 600,
+                        letterSpacing: '0.01em'
+                      }}>Category</th>
+                      <th style={{
+                        padding: '10px 12px',
+                        border: '1px solid #334155',
+                        color: '#94a3b8',
+                        fontWeight: 600,
+                        letterSpacing: '0.01em'
+                      }}>Actual</th>
+                      <th style={{
+                        padding: '10px 12px',
+                        border: '1px solid #334155',
+                        color: '#94a3b8',
+                        fontWeight: 600,
+                        letterSpacing: '0.01em'
+                      }}>Target</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1148,13 +1278,32 @@ export default function ProgramPreview({
 
                       return (
                         <tr key={category}>
-                          <td style={{ padding: '6px', border: '1px solid #e2e8f0', textTransform: 'capitalize' }}>
+                          <td style={{
+                            padding: '10px 12px',
+                            border: '1px solid #334155',
+                            textTransform: 'capitalize',
+                            backgroundColor: '#1a1f2e',
+                            color: '#cbd5e1'
+                          }}>
                             {category}
                           </td>
-                          <td style={{ padding: '6px', border: '1px solid #e2e8f0' }}>
-                            <span style={{ color: actualColor }}>{actualDisplay}</span>
+                          <td style={{
+                            padding: '10px 12px',
+                            border: '1px solid #334155',
+                            backgroundColor: '#1a1f2e'
+                          }}>
+                            <span style={{
+                              color: actualColor === '#1f2937' ? '#e2e8f0' :
+                                actualColor === '#f97316' ? '#fdba74' : '#fca5a5',
+                              fontWeight: actualColor !== '#1f2937' ? 600 : 500
+                            }}>{actualDisplay}</span>
                           </td>
-                          <td style={{ padding: '6px', border: '1px solid #e2e8f0' }}>
+                          <td style={{
+                            padding: '10px 12px',
+                            border: '1px solid #334155',
+                            backgroundColor: '#1a1f2e',
+                            color: '#cbd5e1'
+                          }}>
                             {target === null ? '—' : target}
                           </td>
                         </tr>

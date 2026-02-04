@@ -5,15 +5,15 @@ import { getUserId } from "./auth";
 const normalizeExerciseName = (value: string) =>
   value.toLowerCase().trim().replace(/\s+/g, " ");
 
-// Get all unique athletes for a user
+// Get all unique athletes (admin sees all programs)
 export const getAthletes = query({
   args: {},
   handler: async (ctx, args) => {
-    const userId = await getUserId(ctx);
-    const programs = await ctx.db
-      .query("programs")
-      .withIndex("by_user", (q) => q.eq("userId", userId))
-      .collect();
+    // Verify admin authentication
+    await getUserId(ctx);
+
+    // Admin can see all programs regardless of userId
+    const programs = await ctx.db.query("programs").collect();
 
     // Get unique athlete names
     const athleteNames = [...new Set(programs.map((p) => p.athleteName))];
@@ -21,36 +21,38 @@ export const getAthletes = query({
   },
 });
 
-// Get all programs for a specific athlete
+// Get all programs for a specific athlete (admin sees all)
 export const getProgramsForAthlete = query({
   args: {
     athleteName: v.string(),
   },
   handler: async (ctx, args) => {
-    const userId = await getUserId(ctx);
+    // Verify admin authentication
+    await getUserId(ctx);
+
+    // Admin can see all programs for the athlete
     const programs = await ctx.db
       .query("programs")
-      .withIndex("by_user_athlete", (q) =>
-        q.eq("userId", userId).eq("athleteName", args.athleteName)
-      )
+      .withIndex("by_athlete", (q) => q.eq("athleteName", args.athleteName))
       .collect();
 
     return programs;
   },
 });
 
-// Get the most recent program for an athlete
+// Get the most recent program for an athlete (admin sees all)
 export const getCurrentProgramForAthlete = query({
   args: {
     athleteName: v.string(),
   },
   handler: async (ctx, args) => {
-    const userId = await getUserId(ctx);
+    // Verify admin authentication
+    await getUserId(ctx);
+
+    // Admin can see all programs for the athlete
     const programs = await ctx.db
       .query("programs")
-      .withIndex("by_user_athlete", (q) =>
-        q.eq("userId", userId).eq("athleteName", args.athleteName)
-      )
+      .withIndex("by_athlete", (q) => q.eq("athleteName", args.athleteName))
       .collect();
 
     if (programs.length === 0) return null;
@@ -60,15 +62,15 @@ export const getCurrentProgramForAthlete = query({
   },
 });
 
-// Coach dashboard summary
+// Coach dashboard summary (admin sees all)
 export const getCoachDashboard = query({
   args: {},
   handler: async (ctx, args) => {
-    const userId = await getUserId(ctx);
-    const programs = await ctx.db
-      .query("programs")
-      .withIndex("by_user", (q) => q.eq("userId", userId))
-      .collect();
+    // Verify admin authentication
+    await getUserId(ctx);
+
+    // Admin can see all programs
+    const programs = await ctx.db.query("programs").collect();
 
     const byAthlete = new Map<string, typeof programs[number]>();
     for (const program of programs) {
@@ -95,7 +97,7 @@ export const getCoachDashboard = query({
   },
 });
 
-// Get a specific program for the training calendar
+// Get a specific program for the training calendar (admin sees all)
 export const getAthleteProgram = query({
   args: {
     athleteName: v.string(),
@@ -103,12 +105,14 @@ export const getAthleteProgram = query({
     startDate: v.string(),
   },
   handler: async (ctx, args) => {
-    const userId = await getUserId(ctx);
+    // Verify admin authentication
+    await getUserId(ctx);
+
+    // Admin can see any program by athlete/program/startDate
     const program = await ctx.db
       .query("programs")
-      .withIndex("by_user_athlete_program", (q) =>
+      .withIndex("by_athlete_program", (q) =>
         q
-          .eq("userId", userId)
           .eq("athleteName", args.athleteName)
           .eq("programName", args.programName)
           .eq("startDate", args.startDate)
@@ -119,19 +123,20 @@ export const getAthleteProgram = query({
   },
 });
 
-// Get flattened workouts for analytics
+// Get flattened workouts for analytics (admin sees all)
 export const getWorkoutsForAnalytics = query({
   args: {
     athleteName: v.string(),
     programName: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const userId = await getUserId(ctx);
+    // Verify admin authentication
+    await getUserId(ctx);
+
+    // Admin can see all programs for the athlete
     let query = ctx.db
       .query("programs")
-      .withIndex("by_user_athlete", (q) =>
-        q.eq("userId", userId).eq("athleteName", args.athleteName)
-      );
+      .withIndex("by_athlete", (q) => q.eq("athleteName", args.athleteName));
 
     const programs = await query.collect();
 
@@ -161,18 +166,19 @@ export const getWorkoutsForAnalytics = query({
   },
 });
 
-// Get recent bests (heaviest weight in last 3 months) for an athlete
+// Get recent bests (heaviest weight in last 3 months) for an athlete (admin sees all)
 export const getRecentBestsForAthlete = query({
   args: {
     athleteName: v.string(),
   },
   handler: async (ctx, args) => {
-    const userId = await getUserId(ctx);
+    // Verify admin authentication
+    await getUserId(ctx);
+
+    // Admin can see all programs for the athlete
     const programs = await ctx.db
       .query("programs")
-      .withIndex("by_user_athlete", (q) =>
-        q.eq("userId", userId).eq("athleteName", args.athleteName)
-      )
+      .withIndex("by_athlete", (q) => q.eq("athleteName", args.athleteName))
       .collect();
 
     const cutoffDate = new Date();
@@ -204,15 +210,15 @@ export const getRecentBestsForAthlete = query({
   },
 });
 
-// Get athlete schedule summaries (last session + days remaining)
+// Get athlete schedule summaries (last session + days remaining) (admin sees all)
 export const getAthleteScheduleSummaries = query({
   args: {},
   handler: async (ctx, args) => {
-    const userId = await getUserId(ctx);
-    const programs = await ctx.db
-      .query("programs")
-      .withIndex("by_user", (q) => q.eq("userId", userId))
-      .collect();
+    // Verify admin authentication
+    await getUserId(ctx);
+
+    // Admin can see all programs
+    const programs = await ctx.db.query("programs").collect();
 
     // Group by athlete
     const athleteMap = new Map<
@@ -458,7 +464,7 @@ export const updateProgram = mutation({
   },
 });
 
-// Delete a program
+// Delete a program (admin can delete any)
 export const deleteProgram = mutation({
   args: {
     athleteName: v.string(),
@@ -466,19 +472,21 @@ export const deleteProgram = mutation({
     startDate: v.string(),
   },
   handler: async (ctx, args) => {
-    const userId = await getUserId(ctx);
+    // Verify admin authentication
+    await getUserId(ctx);
+
+    // Admin can delete any program
     const program = await ctx.db
       .query("programs")
-      .withIndex("by_user_athlete_program", (q) =>
+      .withIndex("by_athlete_program", (q) =>
         q
-          .eq("userId", userId)
           .eq("athleteName", args.athleteName)
           .eq("programName", args.programName)
           .eq("startDate", args.startDate)
       )
       .first();
 
-    if (program && program.userId === userId) {
+    if (program) {
       await ctx.db.delete(program._id);
       return true;
     }
@@ -487,18 +495,19 @@ export const deleteProgram = mutation({
   },
 });
 
-// Delete all data for an athlete
+// Delete all data for an athlete (admin can delete any)
 export const deleteAthleteData = mutation({
   args: {
     athleteName: v.string(),
   },
   handler: async (ctx, args) => {
-    const userId = await getUserId(ctx);
+    // Verify admin authentication
+    await getUserId(ctx);
+
+    // Admin can delete all programs for any athlete
     const programs = await ctx.db
       .query("programs")
-      .withIndex("by_user_athlete", (q) =>
-        q.eq("userId", userId).eq("athleteName", args.athleteName)
-      )
+      .withIndex("by_athlete", (q) => q.eq("athleteName", args.athleteName))
       .collect();
 
     for (const program of programs) {
@@ -831,19 +840,20 @@ export const updateDaySessionIntensity = mutation({
   },
 });
 
-// Get completed days for history (read-only for mobile)
+// Get completed days for history (read-only for mobile) (admin sees all)
 export const getCompletedDays = query({
   args: {
     athleteName: v.string(),
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    const userId = await getUserId(ctx);
+    // Verify admin authentication
+    await getUserId(ctx);
+
+    // Admin can see all programs for the athlete
     const programs = await ctx.db
       .query("programs")
-      .withIndex("by_user_athlete", (q) =>
-        q.eq("userId", userId).eq("athleteName", args.athleteName)
-      )
+      .withIndex("by_athlete", (q) => q.eq("athleteName", args.athleteName))
       .collect();
 
     // Flatten and filter completed days
