@@ -8,6 +8,7 @@ import { ConvexProviderWithClerk } from "convex/react-clerk";
 import * as SecureStore from "expo-secure-store";
 import "../global.css";
 import { CoachProvider } from "@/components/CoachProvider";
+import { OnboardingProvider, useOnboarding } from "@/components/OnboardingProvider";
 import { UnitProvider } from "@/components/UnitProvider";
 
 const convex = new ConvexReactClient(process.env.EXPO_PUBLIC_CONVEX_URL!);
@@ -32,12 +33,14 @@ const tokenCache = {
 
 function AuthGate({ children }: { children: ReactNode }) {
   const { isLoaded, isSignedIn } = useAuth();
+  const { hasOnboarded, isHydrated } = useOnboarding();
   const segments = useSegments();
   const router = useRouter();
 
   useEffect(() => {
-    if (!isLoaded) return;
+    if (!isLoaded || !isHydrated) return;
     const inAuthGroup = segments[0] === "(auth)";
+    const inOnboarding = segments[0] === "onboarding";
 
     if (!isSignedIn && !inAuthGroup) {
       router.replace("/(auth)/sign-in");
@@ -45,11 +48,21 @@ function AuthGate({ children }: { children: ReactNode }) {
     }
 
     if (isSignedIn && inAuthGroup) {
-      router.replace("/(tabs)");
+      if (!hasOnboarded) {
+        router.replace("/onboarding");
+      } else {
+        router.replace("/(tabs)");
+      }
+      return;
     }
-  }, [isLoaded, isSignedIn, router, segments]);
 
-  if (!isLoaded) return null;
+    if (isSignedIn && !hasOnboarded && !inOnboarding) {
+      router.replace("/onboarding");
+      return;
+    }
+  }, [isLoaded, isSignedIn, hasOnboarded, isHydrated, router, segments]);
+
+  if (!isLoaded || !isHydrated) return null;
   return <>{children}</>;
 }
 
@@ -64,6 +77,7 @@ function RootStack() {
     >
       <Stack.Screen name="(auth)" options={{ headerShown: false }} />
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+      <Stack.Screen name="onboarding" options={{ headerShown: false, gestureEnabled: false }} />
       <Stack.Screen
         name="set-meet"
         options={{
@@ -86,13 +100,15 @@ export default function RootLayout() {
       <ClerkProvider publishableKey={publishableKey} tokenCache={tokenCache}>
         <ConvexProviderWithClerk client={convex} useAuth={useAuth}>
           <HeroUINativeProvider>
-            <UnitProvider>
-              <CoachProvider>
-                <AuthGate>
-                  <RootStack />
-                </AuthGate>
-              </CoachProvider>
-            </UnitProvider>
+            <OnboardingProvider>
+              <UnitProvider>
+                <CoachProvider>
+                  <AuthGate>
+                    <RootStack />
+                  </AuthGate>
+                </CoachProvider>
+              </UnitProvider>
+            </OnboardingProvider>
           </HeroUINativeProvider>
         </ConvexProviderWithClerk>
       </ClerkProvider>
