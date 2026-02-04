@@ -1,18 +1,23 @@
 import { useCoach } from "@/components/CoachProvider";
 import { useUnit } from "@/components/UnitProvider";
 import WeightUnitPickerModal from "@/components/WeightUnitPickerModal";
-import { useAuth } from "@clerk/clerk-expo";
+import { useAuth, useUser } from "@clerk/clerk-expo";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useRouter } from "expo-router";
 import { useState } from "react";
-import { Pressable, SafeAreaView, Switch, Text, View } from "react-native";
+import { Linking, Pressable, SafeAreaView, Switch, Text, View } from "react-native";
 
 const SettingsScreen = () => {
   const { signOut } = useAuth();
+  const { user } = useUser();
   const router = useRouter();
   const { isCoachUser, coachEnabled, setCoachEnabled } = useCoach();
   const { weightUnit, setWeightUnit } = useUnit();
   const [unitPickerOpen, setUnitPickerOpen] = useState(false);
+  const displayName =
+    user?.fullName ||
+    [user?.firstName, user?.lastName].filter(Boolean).join(" ") ||
+    "Unknown";
 
   return (
     <SafeAreaView className="flex-1 bg-background">
@@ -66,6 +71,26 @@ const SettingsScreen = () => {
       )}
 
       <View className="mt-10 px-5">
+        <Pressable
+          onPress={async () => {
+            const subject = "App Feedback";
+            const body = `Name: ${displayName}\nClerk ID: ${
+              user?.id ?? "Unknown"
+            }\n\nMessage:\n`;
+            const mailto = `mailto:maddisen@meetcal.app?subject=${encodeURIComponent(
+              subject
+            )}&body=${encodeURIComponent(body)}`;
+            await Linking.openURL(mailto);
+          }}
+          className="items-center rounded-2xl bg-card-background py-3.5"
+        >
+          <Text className="text-base font-semibold text-text-title">
+            Submit Feedback
+          </Text>
+        </Pressable>
+      </View>
+
+      <View className="mt-4 px-5">
         <Pressable
           onPress={async () => {
             await signOut();
