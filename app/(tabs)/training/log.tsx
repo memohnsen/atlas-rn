@@ -14,6 +14,7 @@ import { useAuth } from '@clerk/clerk-expo'
 import { parse } from 'date-fns'
 import * as Haptics from 'expo-haptics'
 import { useLocalSearchParams, useRouter } from 'expo-router'
+import * as StoreReview from 'expo-store-review'
 import { SymbolView } from 'expo-symbols'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import {
@@ -190,6 +191,16 @@ const TrainingLog = () => {
       completed: true,
       rating: activeReadiness,
     })
+    if (!coachEnabled && isFirstWorkoutCompletion && Platform.OS !== 'web') {
+      try {
+        const isAvailable = await StoreReview.isAvailableAsync()
+        if (isAvailable) {
+          await StoreReview.requestReview()
+        }
+      } catch {
+        // Ignore review request errors silently.
+      }
+    }
     if (coachEnabled) {
       router.back()
       return
@@ -248,6 +259,19 @@ const TrainingLog = () => {
 
   const totalExercises = currentDay.exercises.length
   const completedExercises = currentDay.exercises.filter((e) => e.completed).length
+  const isFirstWorkoutCompletion = useMemo(() => {
+    if (currentDay.completed) return false
+    let completedCount = 0
+    for (const week of program.weeks) {
+      for (const day of week.days) {
+        if (day.completed) {
+          if (week.weekNumber === weekNumber && day.dayNumber === dayNumber) continue
+          completedCount += 1
+        }
+      }
+    }
+    return completedCount === 0
+  }, [currentDay.completed, dayNumber, program.weeks, weekNumber])
 
   const toDisplayWeight = (value: number | undefined) => {
     if (typeof value !== 'number') return ''
