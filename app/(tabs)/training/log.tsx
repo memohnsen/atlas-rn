@@ -190,7 +190,19 @@ const TrainingLog = () => {
       completed: true,
       rating: activeReadiness,
     })
-    router.back()
+    if (coachEnabled) {
+      router.back()
+      return
+    }
+
+    router.push({
+      pathname: '/(tabs)/training/summary',
+      params: {
+        date,
+        readiness: activeReadiness,
+        intensity: String(intensity),
+      },
+    })
   }
 
   const handleExerciseToggle = async (exerciseNumber: number, completed: boolean, weight?: number) => {
