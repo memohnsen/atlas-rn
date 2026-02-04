@@ -1,15 +1,15 @@
 import AthletePickerModal from '@/components/AthletePickerModal'
 import { useCoach } from '@/components/CoachProvider'
-import { useUnit } from '@/components/UnitProvider'
 import Header from '@/components/Header'
 import ProgressCard from '@/components/ProgressCard'
+import { useUnit } from '@/components/UnitProvider'
 import { api } from '@/convex/_generated/api'
 import { GroupedPRs, LiftName } from '@/types/prs'
 import { useAuth } from '@clerk/clerk-expo'
-import { useQuery } from 'convex/react'
+import { useMutation, useQuery } from 'convex/react'
 import { Chip } from 'heroui-native'
 import { useState } from 'react'
-import { FlatList, Pressable, Text, View } from 'react-native'
+import { FlatList, Modal, Pressable, Text, TextInput, View } from 'react-native'
 
 
 // add other rep maxes later
@@ -46,18 +46,24 @@ const Progress = () => {
   const { coachEnabled, selectedAthlete, setSelectedAthlete, athletes } = useCoach()
   const { weightUnit } = useUnit()
   const [pickerOpen, setPickerOpen] = useState(false)
+  const [editOpen, setEditOpen] = useState(false)
+  const [editValue, setEditValue] = useState('')
+  const [editLift, setEditLift] = useState<{ label: string; value: LiftName } | null>(null)
+  const upsertPR = useMutation(api.athletePRs.upsertPR)
+
+  const athleteName = coachEnabled ? (selectedAthlete ?? 'maddisen') : 'maddisen'
 
   const prData = useQuery(
     api.athletePRs.getAthletePRs,
     isSignedIn
-      ? { athleteName: coachEnabled ? (selectedAthlete ?? 'maddisen') : 'maddisen' }
+      ? { athleteName }
       : 'skip'
   )
 
   const recentBests = useQuery(
     api.programs.getRecentBestsForAthlete,
     isSignedIn
-      ? { athleteName: coachEnabled ? (selectedAthlete ?? 'maddisen') : 'maddisen' }
+      ? { athleteName }
       : 'skip'
   )
 
@@ -90,6 +96,33 @@ const Progress = () => {
     (card) => chipSelected === "all" || card.category === chipSelected
   )
 
+  const canEditPRs = Boolean(isSignedIn)
+
+  const handleEditPress = (label: string, value: LiftName) => {
+    const currentPr = getOneRm(prData, value)
+    setEditLift({ label, value })
+    setEditValue(currentPr ? String(currentPr) : '')
+    setEditOpen(true)
+  }
+
+  const handleSaveEdit = async () => {
+    if (!editLift) return
+    const parsed = Number(editValue)
+    if (!Number.isFinite(parsed) || parsed <= 0) return
+
+    const storedWeight = weightUnit === 'lb' ? parsed / 2.2 : parsed
+    const normalizedWeight = Math.round(storedWeight * 10) / 10
+
+    await upsertPR({
+      athleteName,
+      exerciseName: editLift.value,
+      repMax: 1,
+      weight: normalizedWeight,
+    })
+
+    setEditOpen(false)
+  }
+
   return (
     <View className='flex-1 bg-background'>
       <AthletePickerModal
@@ -99,6 +132,50 @@ const Progress = () => {
         onSelect={setSelectedAthlete}
         onClose={() => setPickerOpen(false)}
       />
+      <Modal visible={editOpen} transparent animationType="fade" onRequestClose={() => setEditOpen(false)}>
+        <Pressable
+          className="flex-1 bg-black/50 justify-center px-6"
+          onPress={() => setEditOpen(false)}
+        >
+          <Pressable
+            className="rounded-2xl bg-card-background p-5"
+            onPress={(event) => event.stopPropagation()}
+          >
+            <Text className="text-text-title text-lg font-semibold mb-4">
+              {editLift ? `Edit ${editLift.label} PR` : 'Edit PR'}
+            </Text>
+            <Text className="text-sm text-text-title mb-4">
+              Enter your 1RM in {weightUnit === 'lb' ? 'lbs' : 'kg'}.
+            </Text>
+            <TextInput
+              value={editValue}
+              onChangeText={setEditValue}
+              keyboardType="numeric"
+              placeholder={`e.g. 100 ${weightUnit === 'lb' ? 'lbs' : 'kg'}`}
+              placeholderTextColor="#9CA3AF"
+              className="rounded-xl border border-card-border bg-background px-4 h-12 text-base text-text-title"
+              style={{ textAlignVertical: 'center' }}
+            />
+            <View className="mt-5 flex-row justify-end gap-3">
+              <Pressable
+                onPress={() => setEditOpen(false)}
+                className="rounded-xl px-4 py-3"
+                style={{ backgroundColor: 'transparent' }}
+              >
+                <Text className="text-text-title text-base font-medium">Cancel</Text>
+              </Pressable>
+              <Pressable
+                onPress={handleSaveEdit}
+                disabled={!editValue.trim() || Number(editValue) <= 0}
+                className="rounded-xl px-4 py-3"
+                style={{ backgroundColor: '#5386E4' }}
+              >
+                <Text className="text-white text-base font-medium">Save</Text>
+              </Pressable>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
       <FlatList
         data={filteredCards}
         keyExtractor={(item) => item.value}
@@ -144,6 +221,8 @@ const Progress = () => {
                 recentBest={getRecentBest(recentBests, label)}
                 pr={getOneRm(prData, value)}
                 unit={weightUnit}
+                canEdit={canEditPRs}
+                onEdit={() => handleEditPress(label, value)}
               />
             </View>
           ) : (

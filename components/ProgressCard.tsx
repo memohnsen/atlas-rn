@@ -1,23 +1,29 @@
 import Ionicons from '@expo/vector-icons/Ionicons'
 import { Card, Divider } from 'heroui-native'
 import React from 'react'
-import { View } from 'react-native'
+import { Pressable, View } from 'react-native'
 
 interface ProgressCardProps {
   exerciseName: string
   recentBest: number
   pr: number
   unit: 'kg' | 'lb'
+  canEdit?: boolean
+  onEdit?: () => void
 }
 
-const ProgressCard = ({ exerciseName, recentBest, pr, unit }: ProgressCardProps) => {
+const ProgressCard = ({ exerciseName, recentBest, pr, unit, canEdit, onEdit }: ProgressCardProps) => {
   const unitLabel = unit === 'lb' ? 'lbs' : 'kg'
   return (
     <Card className='mt-4 bg-card-background'>
         <Card.Body>
-          <View className='flex-row justify-between mb-2'>
+          <View className='flex-row justify-between items-center mb-2'>
             <Card.Title className='text-2xl font-bold'>{exerciseName}</Card.Title>
-            <Ionicons name="arrow-up-circle" size={32} color="green" />
+            {canEdit && (
+              <Pressable onPress={onEdit} hitSlop={8}>
+                <Ionicons name="create-outline" size={22} color="#6B7280" />
+              </Pressable>
+            )}
           </View>
           <Divider />
           <View className='flex-row justify-between my-2'>
