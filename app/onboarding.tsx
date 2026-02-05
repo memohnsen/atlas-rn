@@ -12,6 +12,7 @@ import { useCallback, useRef, useState } from 'react'
 import {
   Dimensions,
   FlatList,
+  Platform,
   Pressable,
   ScrollView,
   Text,
@@ -19,7 +20,7 @@ import {
   View,
   type ViewToken,
 } from 'react-native'
-import Animated, { FadeIn, FadeInDown, FadeInUp, FadeOut } from 'react-native-reanimated'
+import Animated, { FadeIn, FadeInDown, FadeInUp } from 'react-native-reanimated'
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window')
 
@@ -174,6 +175,7 @@ export default function OnboardingScreen() {
               meetDate={meetDate}
               onNameChange={setMeetName}
               onDateChange={setMeetDate}
+              isActive={step === 2}
             />
           )
         case 3:
@@ -190,7 +192,7 @@ export default function OnboardingScreen() {
           return null
       }
     },
-    [selectedUnit, meetName, meetDate, prValues]
+    [selectedUnit, meetName, meetDate, prValues, step]
   )
 
   const isLastStep = step === TOTAL_STEPS - 1
@@ -238,6 +240,8 @@ export default function OnboardingScreen() {
             offset: SCREEN_WIDTH * index,
             index,
           })}
+          initialNumToRender={1}
+          windowSize={2}
         />
 
         {/* Bottom buttons */}
@@ -419,12 +423,16 @@ function MeetStep({
   meetDate,
   onNameChange,
   onDateChange,
+  isActive,
 }: {
   meetName: string
   meetDate: Date
   onNameChange: (name: string) => void
   onDateChange: (date: Date) => void
+  isActive: boolean
 }) {
+  const [showAndroidDatePicker, setShowAndroidDatePicker] = useState(false)
+
   return (
     <View style={{ width: SCREEN_WIDTH }} className="flex-1">
       <ScrollView
@@ -465,16 +473,42 @@ function MeetStep({
           <Text className="text-gray-500 text-sm uppercase tracking-wider mb-2 ml-1">
             Date
           </Text>
-          <DateTimePicker
-            value={meetDate}
-            mode="date"
-            display="inline"
-            minimumDate={new Date()}
-            onChange={(_event, selectedDate) => {
-              if (selectedDate) onDateChange(selectedDate)
-            }}
-            style={{ alignSelf: 'center' }}
-          />
+          {Platform.OS === 'ios' ? (
+            <DateTimePicker
+              value={meetDate}
+              mode="date"
+              display="inline"
+              minimumDate={new Date()}
+              onChange={(_event, selectedDate) => {
+                if (selectedDate) onDateChange(selectedDate)
+              }}
+              style={{ alignSelf: 'center' }}
+            />
+          ) : (
+            <>
+              <Pressable
+                onPress={() => setShowAndroidDatePicker(true)}
+                className="bg-card-background rounded-xl px-4 py-3.5"
+                style={{ borderCurve: 'continuous' }}
+              >
+                <Text className="text-text-title text-base">{format(meetDate, 'MMMM d, yyyy')}</Text>
+              </Pressable>
+              {isActive && showAndroidDatePicker && (
+                <DateTimePicker
+                  value={meetDate}
+                  mode="date"
+                  display="default"
+                  minimumDate={new Date()}
+                  onChange={(event, selectedDate) => {
+                    setShowAndroidDatePicker(false)
+                    if (event.type === 'set' && selectedDate) {
+                      onDateChange(selectedDate)
+                    }
+                  }}
+                />
+              )}
+            </>
+          )}
         </Animated.View>
       </ScrollView>
     </View>
@@ -554,7 +588,7 @@ function PRStep({
 
         <Animated.View entering={FadeIn.delay(600).duration(400)}>
           <Text className="text-gray-500 text-sm text-center mt-6">
-            Leave blank if you're not sure — you can update these later
+            Leave blank if you are not sure - you can update these later
           </Text>
         </Animated.View>
       </ScrollView>

@@ -5,7 +5,7 @@ import { format } from 'date-fns'
 import { useRouter } from 'expo-router'
 import { Stack } from 'expo-router/stack'
 import { useAuth } from '@clerk/clerk-expo'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   Alert,
   KeyboardAvoidingView,
@@ -29,13 +29,14 @@ export default function SetMeetScreen() {
   const [meetName, setMeetName] = useState('')
   const [meetDate, setMeetDate] = useState(new Date())
   const [initialized, setInitialized] = useState(false)
+  const [showAndroidDatePicker, setShowAndroidDatePicker] = useState(false)
 
-  // Pre-fill from existing meet data
-  if (existingMeet && !initialized) {
+  useEffect(() => {
+    if (!existingMeet || initialized) return
     setMeetName(existingMeet.meetName)
     setMeetDate(new Date(existingMeet.meetDate + 'T00:00:00'))
     setInitialized(true)
-  }
+  }, [existingMeet, initialized])
 
   const handleSave = async () => {
     const trimmedName = meetName.trim()
@@ -107,16 +108,42 @@ export default function SetMeetScreen() {
           <Text className="text-gray-500 text-sm uppercase tracking-wider mb-2 ml-1 mt-6">
             Date
           </Text>
-          <DateTimePicker
-            value={meetDate}
-            mode="date"
-            display="inline"
-            minimumDate={new Date()}
-            onChange={(_event, selectedDate) => {
-              if (selectedDate) setMeetDate(selectedDate)
-            }}
-            style={{ alignSelf: 'center' }}
-          />
+          {Platform.OS === 'ios' ? (
+            <DateTimePicker
+              value={meetDate}
+              mode="date"
+              display="inline"
+              minimumDate={new Date()}
+              onChange={(_event, selectedDate) => {
+                if (selectedDate) setMeetDate(selectedDate)
+              }}
+              style={{ alignSelf: 'center' }}
+            />
+          ) : (
+            <>
+              <Pressable
+                onPress={() => setShowAndroidDatePicker(true)}
+                className="bg-card-background rounded-xl px-4 py-3.5"
+                style={{ borderCurve: 'continuous' }}
+              >
+                <Text className="text-text-title text-base">{format(meetDate, 'MMMM d, yyyy')}</Text>
+              </Pressable>
+              {showAndroidDatePicker && (
+                <DateTimePicker
+                  value={meetDate}
+                  mode="date"
+                  display="default"
+                  minimumDate={new Date()}
+                  onChange={(event, selectedDate) => {
+                    setShowAndroidDatePicker(false)
+                    if (event.type === 'set' && selectedDate) {
+                      setMeetDate(selectedDate)
+                    }
+                  }}
+                />
+              )}
+            </>
+          )}
 
           {existingMeet && (
             <Pressable onPress={handleDelete} className="mt-6 items-center py-3">
