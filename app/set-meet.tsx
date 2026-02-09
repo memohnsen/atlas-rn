@@ -1,11 +1,11 @@
 import { api } from '@/convex/_generated/api'
-import DateTimePicker from '@react-native-community/datetimepicker'
+import DateTimePicker, { DateTimePickerAndroid } from '@react-native-community/datetimepicker'
 import { useMutation, useQuery } from 'convex/react'
 import { format } from 'date-fns'
 import { useRouter } from 'expo-router'
 import { Stack } from 'expo-router/stack'
 import { useAuth } from '@clerk/clerk-expo'
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import {
   Alert,
   KeyboardAvoidingView,
@@ -29,7 +29,19 @@ export default function SetMeetScreen() {
   const [meetName, setMeetName] = useState('')
   const [meetDate, setMeetDate] = useState(new Date())
   const [initialized, setInitialized] = useState(false)
-  const [showAndroidDatePicker, setShowAndroidDatePicker] = useState(false)
+
+  const openAndroidDatePicker = useCallback(() => {
+    DateTimePickerAndroid.open({
+      value: meetDate,
+      mode: 'date',
+      minimumDate: new Date(),
+      onChange: (event, selectedDate) => {
+        if (event.type === 'set' && selectedDate) {
+          setMeetDate(selectedDate)
+        }
+      },
+    })
+  }, [meetDate])
 
   useEffect(() => {
     if (!existingMeet || initialized) return
@@ -122,26 +134,12 @@ export default function SetMeetScreen() {
           ) : (
             <>
               <Pressable
-                onPress={() => setShowAndroidDatePicker(true)}
+                onPress={openAndroidDatePicker}
                 className="bg-card-background rounded-xl px-4 py-3.5"
                 style={{ borderCurve: 'continuous' }}
               >
                 <Text className="text-text-title text-base">{format(meetDate, 'MMMM d, yyyy')}</Text>
               </Pressable>
-              {showAndroidDatePicker && (
-                <DateTimePicker
-                  value={meetDate}
-                  mode="date"
-                  display="default"
-                  minimumDate={new Date()}
-                  onChange={(event, selectedDate) => {
-                    setShowAndroidDatePicker(false)
-                    if (event.type === 'set' && selectedDate) {
-                      setMeetDate(selectedDate)
-                    }
-                  }}
-                />
-              )}
             </>
           )}
 

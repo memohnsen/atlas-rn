@@ -8,7 +8,7 @@ import { format } from 'date-fns'
 import * as Haptics from 'expo-haptics'
 import { useRouter } from 'expo-router'
 import { Stack } from 'expo-router/stack'
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   Dimensions,
   FlatList,
@@ -433,6 +433,12 @@ function MeetStep({
 }) {
   const [showAndroidDatePicker, setShowAndroidDatePicker] = useState(false)
 
+  useEffect(() => {
+    if (!isActive) {
+      setShowAndroidDatePicker(false)
+    }
+  }, [isActive])
+
   return (
     <View style={{ width: SCREEN_WIDTH }} className="flex-1">
       <ScrollView
@@ -501,7 +507,7 @@ function MeetStep({
                   minimumDate={new Date()}
                   onChange={(event, selectedDate) => {
                     setShowAndroidDatePicker(false)
-                    if (event.type === 'set' && selectedDate) {
+                    if (event?.type === 'set' && selectedDate instanceof Date) {
                       onDateChange(selectedDate)
                     }
                   }}
