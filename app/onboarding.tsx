@@ -241,7 +241,9 @@ export default function OnboardingScreen() {
             index,
           })}
           initialNumToRender={1}
-          windowSize={2}
+          windowSize={3}
+          removeClippedSubviews
+          style={{ overflow: 'hidden' }}
         />
 
         {/* Bottom buttons */}
@@ -281,7 +283,7 @@ export default function OnboardingScreen() {
 // Step 0: Welcome & Features
 function WelcomeStep() {
   return (
-    <View style={{ width: SCREEN_WIDTH }} className="flex-1 px-6 justify-center">
+    <View style={{ width: SCREEN_WIDTH, overflow: 'hidden' }} className="flex-1 px-6 justify-center">
       <Animated.View entering={FadeInDown.duration(500).springify().damping(18)}>
         <View className="items-center mb-10">
           <View
@@ -350,7 +352,7 @@ function UnitStep({
   }
 
   return (
-    <View style={{ width: SCREEN_WIDTH }} className="flex-1 px-6 justify-center">
+    <View style={{ width: SCREEN_WIDTH, overflow: 'hidden' }} className="flex-1 px-6 justify-center">
       <Animated.View entering={FadeInDown.duration(500).springify().damping(18)}>
         <Text className="text-text-title text-[28px] font-bold text-center">
           Choose Your Units
@@ -440,7 +442,7 @@ function MeetStep({
   }, [isActive])
 
   return (
-    <View style={{ width: SCREEN_WIDTH }} className="flex-1">
+    <View style={{ width: SCREEN_WIDTH, overflow: 'hidden' }} className="flex-1">
       <ScrollView
         contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 8, paddingBottom: 40 }}
         keyboardDismissMode="on-drag"
@@ -534,7 +536,7 @@ function PRStep({
   const unitLabel = unit === 'lb' ? 'lbs' : 'kg'
 
   return (
-    <View style={{ width: SCREEN_WIDTH }} className="flex-1">
+    <View style={{ width: SCREEN_WIDTH, overflow: 'hidden' }} className="flex-1">
       <ScrollView
         contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 8, paddingBottom: 40 }}
         keyboardDismissMode="on-drag"

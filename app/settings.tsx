@@ -5,7 +5,7 @@ import { useAuth, useUser } from "@clerk/clerk-expo";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useRouter } from "expo-router";
 import { useState } from "react";
-import { Linking, Pressable, SafeAreaView, Switch, Text, View } from "react-native";
+import { Linking, Pressable, Switch, Text, View } from "react-native";
 
 const SettingsScreen = () => {
   const { signOut } = useAuth();
@@ -20,23 +20,25 @@ const SettingsScreen = () => {
     "Unknown";
 
   return (
-    <SafeAreaView className="flex-1 bg-background">
-      <WeightUnitPickerModal
-        visible={unitPickerOpen}
-        selectedUnit={weightUnit}
-        onSelect={setWeightUnit}
-        onClose={() => setUnitPickerOpen(false)}
-      />
-      <View className="px-5 pt-4">
-        <View className="flex-row items-center justify-between">
-          <Pressable
-            onPress={() => router.back()}
-            className="h-9 w-9 items-center justify-center rounded-full bg-card-background"
-          >
-            <Ionicons name="chevron-back" size={24} color="#6C6C70" />
-          </Pressable>
-          <Text className="text-3xl font-bold text-text-title">Settings</Text>
-          <View className="h-9 w-9" />
+    <View className="flex-1 bg-background">
+      <View className="mt-12">
+        <WeightUnitPickerModal
+          visible={unitPickerOpen}
+          selectedUnit={weightUnit}
+          onSelect={setWeightUnit}
+          onClose={() => setUnitPickerOpen(false)}
+        />
+        <View className="px-5 pt-4">
+          <View className="flex-row items-center justify-between">
+            <Pressable
+              onPress={() => router.back()}
+              className="h-9 w-9 items-center justify-center rounded-full bg-card-background"
+            >
+              <Ionicons name="chevron-back" size={24} color="#6C6C70" />
+            </Pressable>
+            <Text className="text-3xl font-bold text-text-title">Settings</Text>
+            <View className="h-9 w-9" />
+          </View>
         </View>
       </View>
 
@@ -78,7 +80,7 @@ const SettingsScreen = () => {
               user?.id ?? "Unknown"
             }\n\nMessage:\n`;
             const mailto = `mailto:maddisen@meetcal.app?subject=${encodeURIComponent(
-              subject
+              subject,
             )}&body=${encodeURIComponent(body)}`;
             await Linking.openURL(mailto);
           }}
@@ -101,7 +103,7 @@ const SettingsScreen = () => {
           <Text className="text-base font-semibold text-white">Sign Out</Text>
         </Pressable>
       </View>
-    </SafeAreaView>
+    </View>
   );
 };
 
