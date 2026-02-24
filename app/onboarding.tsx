@@ -9,22 +9,17 @@ import * as Haptics from 'expo-haptics'
 import { useRouter } from 'expo-router'
 import { Stack } from 'expo-router/stack'
 import { useUser } from '@clerk/clerk-expo'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import {
-  Dimensions,
-  FlatList,
   Platform,
   Pressable,
   ScrollView,
   Text,
   TextInput,
   View,
-  type ViewToken,
 } from 'react-native'
 import Animated, { FadeIn, FadeInDown, FadeInUp } from 'react-native-reanimated'
 import { resolveAthleteNameFromUser } from '@/utils/athleteName'
-
-const { width: SCREEN_WIDTH } = Dimensions.get('window')
 
 const LIFTS: { label: string; value: LiftName; category: string }[] = [
   { label: 'Snatch', value: 'snatch', category: 'Olympic' },
@@ -70,7 +65,6 @@ export default function OnboardingScreen() {
   const athleteName = resolveAthleteNameFromUser(user)
 
   const [step, setStep] = useState(0)
-  const flatListRef = useRef<FlatList>(null)
 
   // Weight unit state
   const [selectedUnit, setSelectedUnit] = useState<WeightUnit>(weightUnit)
@@ -94,7 +88,6 @@ export default function OnboardingScreen() {
       if (process.env.EXPO_OS === 'ios') {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
       }
-      flatListRef.current?.scrollToIndex({ index: nextStep, animated: true })
       setStep(nextStep)
     },
     []
@@ -150,54 +143,43 @@ export default function OnboardingScreen() {
 
     completeOnboarding()
     router.replace('/(tabs)')
-  }, [selectedUnit, meetName, meetDate, prValues, setWeightUnit, upsertMeet, bulkUpsertPRs, completeOnboarding, router])
+  }, [selectedUnit, meetName, meetDate, prValues, setWeightUnit, upsertMeet, bulkUpsertPRs, athleteName, completeOnboarding, router])
 
-  const onViewableItemsChanged = useRef(
-    ({ viewableItems }: { viewableItems: ViewToken[] }) => {
-      if (viewableItems.length > 0 && viewableItems[0].index !== null) {
-        setStep(viewableItems[0].index)
-      }
+  const renderStep = useCallback(() => {
+    switch (step) {
+      case 0:
+        return <WelcomeStep />
+      case 1:
+        return (
+          <UnitStep
+            selectedUnit={selectedUnit}
+            onSelect={setSelectedUnit}
+          />
+        )
+      case 2:
+        return (
+          <MeetStep
+            meetName={meetName}
+            meetDate={meetDate}
+            onNameChange={setMeetName}
+            onDateChange={setMeetDate}
+            isActive
+          />
+        )
+      case 3:
+        return (
+          <PRStep
+            prValues={prValues}
+            onPrChange={(lift, val) =>
+              setPrValues((prev) => ({ ...prev, [lift]: val }))
+            }
+            unit={selectedUnit}
+          />
+        )
+      default:
+        return null
     }
-  ).current
-
-  const renderStep = useCallback(
-    ({ index }: { item: number; index: number }) => {
-      switch (index) {
-        case 0:
-          return <WelcomeStep />
-        case 1:
-          return (
-            <UnitStep
-              selectedUnit={selectedUnit}
-              onSelect={setSelectedUnit}
-            />
-          )
-        case 2:
-          return (
-            <MeetStep
-              meetName={meetName}
-              meetDate={meetDate}
-              onNameChange={setMeetName}
-              onDateChange={setMeetDate}
-              isActive={step === 2}
-            />
-          )
-        case 3:
-          return (
-            <PRStep
-              prValues={prValues}
-              onPrChange={(lift, val) =>
-                setPrValues((prev) => ({ ...prev, [lift]: val }))
-              }
-              unit={selectedUnit}
-            />
-          )
-        default:
-          return null
-      }
-    },
-    [selectedUnit, meetName, meetDate, prValues, step]
-  )
+  }, [step, selectedUnit, meetName, meetDate, prValues])
 
   const isLastStep = step === TOTAL_STEPS - 1
   const canSkipMeet = step === 2
@@ -221,34 +203,15 @@ export default function OnboardingScreen() {
                 height: 8,
                 borderRadius: 4,
                 backgroundColor: i === step ? '#5386E4' : i < step ? 'rgba(83, 134, 228, 0.4)' : 'rgba(142, 142, 147, 0.3)',
-                borderCurve: 'continuous',
               }}
             />
           ))}
         </Animated.View>
 
         {/* Content */}
-        <FlatList
-          ref={flatListRef}
-          data={[0, 1, 2, 3]}
-          horizontal
-          pagingEnabled
-          scrollEnabled={false}
-          showsHorizontalScrollIndicator={false}
-          keyExtractor={(item) => String(item)}
-          renderItem={renderStep}
-          onViewableItemsChanged={onViewableItemsChanged}
-          viewabilityConfig={{ viewAreaCoveragePercentThreshold: 50 }}
-          getItemLayout={(_, index) => ({
-            length: SCREEN_WIDTH,
-            offset: SCREEN_WIDTH * index,
-            index,
-          })}
-          initialNumToRender={1}
-          windowSize={3}
-          removeClippedSubviews
-          style={{ overflow: 'hidden' }}
-        />
+        <View className="flex-1">
+          {renderStep()}
+        </View>
 
         {/* Bottom buttons */}
         <Animated.View
@@ -271,7 +234,6 @@ export default function OnboardingScreen() {
             className="items-center justify-center rounded-2xl py-4"
             style={{
               backgroundColor: '#5386E4',
-              borderCurve: 'continuous',
             }}
           >
             <Text className="text-white text-[17px] font-semibold">
@@ -287,12 +249,12 @@ export default function OnboardingScreen() {
 // Step 0: Welcome & Features
 function WelcomeStep() {
   return (
-    <View style={{ width: SCREEN_WIDTH, overflow: 'hidden' }} className="flex-1 px-6 justify-center">
+    <View className="flex-1 px-6 justify-center">
       <Animated.View entering={FadeInDown.duration(500).springify().damping(18)}>
         <View className="items-center mb-10">
           <View
             className="h-20 w-20 items-center justify-center rounded-2xl mb-5"
-            style={{ backgroundColor: '#5386E4', borderCurve: 'continuous' }}
+            style={{ backgroundColor: '#5386E4' }}
           >
             <Text className="text-4xl font-extrabold text-white">A</Text>
           </View>
@@ -316,11 +278,11 @@ function WelcomeStep() {
           >
             <View
               className="flex-row items-center rounded-2xl bg-card-background px-4 py-4"
-              style={{ gap: 14, borderCurve: 'continuous' }}
+              style={{ gap: 14 }}
             >
               <View
                 className="h-11 w-11 items-center justify-center rounded-xl"
-                style={{ backgroundColor: 'rgba(83, 134, 228, 0.1)', borderCurve: 'continuous' }}
+                style={{ backgroundColor: 'rgba(83, 134, 228, 0.1)' }}
               >
                 <Text style={{ fontSize: 22 }}>{feature.icon}</Text>
               </View>
@@ -356,7 +318,7 @@ function UnitStep({
   }
 
   return (
-    <View style={{ width: SCREEN_WIDTH, overflow: 'hidden' }} className="flex-1 px-6 justify-center">
+    <View className="flex-1 px-6 justify-center">
       <Animated.View entering={FadeInDown.duration(500).springify().damping(18)}>
         <Text className="text-text-title text-[28px] font-bold text-center">
           Choose Your Units
@@ -384,7 +346,6 @@ function UnitStep({
                   backgroundColor: isSelected ? 'rgba(83, 134, 228, 0.12)' : undefined,
                   borderWidth: 2,
                   borderColor: isSelected ? '#5386E4' : 'rgba(142, 142, 147, 0.2)',
-                  borderCurve: 'continuous',
                 }}
               >
                 <View>
@@ -446,7 +407,7 @@ function MeetStep({
   }, [isActive])
 
   return (
-    <View style={{ width: SCREEN_WIDTH, overflow: 'hidden' }} className="flex-1">
+    <View className="flex-1">
       <ScrollView
         contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 8, paddingBottom: 40 }}
         keyboardDismissMode="on-drag"
@@ -469,7 +430,6 @@ function MeetStep({
           </Text>
           <TextInput
             className="bg-card-background text-text-title text-base rounded-xl px-4 py-3.5"
-            style={{ borderCurve: 'continuous' }}
             placeholder="e.g. National Championships"
             placeholderTextColor="#8E8E93"
             value={meetName}
@@ -501,7 +461,6 @@ function MeetStep({
               <Pressable
                 onPress={() => setShowAndroidDatePicker(true)}
                 className="bg-card-background rounded-xl px-4 py-3.5"
-                style={{ borderCurve: 'continuous' }}
               >
                 <Text className="text-text-title text-base">{format(meetDate, 'MMMM d, yyyy')}</Text>
               </Pressable>
@@ -540,7 +499,7 @@ function PRStep({
   const unitLabel = unit === 'lb' ? 'lbs' : 'kg'
 
   return (
-    <View style={{ width: SCREEN_WIDTH, overflow: 'hidden' }} className="flex-1">
+    <View className="flex-1">
       <ScrollView
         contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 8, paddingBottom: 40 }}
         keyboardDismissMode="on-drag"
@@ -565,7 +524,6 @@ function PRStep({
             >
               <View
                 className="flex-row items-center justify-between rounded-2xl bg-card-background px-4 py-3"
-                style={{ borderCurve: 'continuous' }}
               >
                 <View className="flex-1 mr-3">
                   <Text className="text-text-title text-base font-semibold">
@@ -585,7 +543,6 @@ function PRStep({
                     className="bg-background text-text-title text-base rounded-xl px-3 h-11 text-right"
                     style={{
                       width: 80,
-                      borderCurve: 'continuous',
                       fontVariant: ['tabular-nums'],
                     }}
                   />

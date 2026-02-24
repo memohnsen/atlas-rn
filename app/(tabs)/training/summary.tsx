@@ -680,6 +680,34 @@ const TrainingSummary = () => {
 
           <View
             style={{
+              backgroundColor: isDark ? "#2B2015" : "#FFF5E8",
+              borderRadius: 18,
+              borderCurve: "continuous",
+              padding: 16,
+              gap: 8,
+              borderWidth: 1,
+              borderColor: isDark ? "#5E3B16" : "#FFD9AD",
+            }}
+          >
+            <Text
+              style={{
+                color: isDark ? "#FFB96A" : "#B35A00",
+                fontSize: 12,
+                fontWeight: "700",
+                textTransform: "uppercase",
+              }}
+            >
+              Weight Equivalence
+            </Text>
+            <Text
+              style={{ color: colors.text, fontSize: 20, fontWeight: "800" }}
+            >
+              {belowAverageBlurb}
+            </Text>
+          </View>
+
+          <View
+            style={{
               backgroundColor: colors.card,
               borderRadius: 18,
               borderCurve: "continuous",
@@ -727,38 +755,12 @@ const TrainingSummary = () => {
                 opacity: isSavingComments ? 0.7 : 1,
               }}
             >
-              <Text style={{ color: "#FFFFFF", fontSize: 15, fontWeight: "700" }}>
+              <Text
+                style={{ color: "#FFFFFF", fontSize: 15, fontWeight: "700" }}
+              >
                 {isSavingComments ? "Saving..." : "Save Session Comments"}
               </Text>
             </Pressable>
-          </View>
-
-          <View
-            style={{
-              backgroundColor: isDark ? "#2B2015" : "#FFF5E8",
-              borderRadius: 18,
-              borderCurve: "continuous",
-              padding: 16,
-              gap: 8,
-              borderWidth: 1,
-              borderColor: isDark ? "#5E3B16" : "#FFD9AD",
-            }}
-          >
-            <Text
-              style={{
-                color: isDark ? "#FFB96A" : "#B35A00",
-                fontSize: 12,
-                fontWeight: "700",
-                textTransform: "uppercase",
-              }}
-            >
-              Weight Equivalence
-            </Text>
-            <Text
-              style={{ color: colors.text, fontSize: 20, fontWeight: "800" }}
-            >
-              {belowAverageBlurb}
-            </Text>
           </View>
 
           <Pressable
