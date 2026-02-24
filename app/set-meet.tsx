@@ -3,7 +3,6 @@ import DateTimePicker, { DateTimePickerAndroid } from '@react-native-community/d
 import { useMutation, useQuery } from 'convex/react'
 import { format } from 'date-fns'
 import { useRouter } from 'expo-router'
-import { Stack } from 'expo-router/stack'
 import { useAuth } from '@clerk/clerk-expo'
 import { useCallback, useEffect, useState } from 'react'
 import {
@@ -14,6 +13,7 @@ import {
   ScrollView,
   Text,
   TextInput,
+  View,
 } from 'react-native'
 
 export default function SetMeetScreen() {
@@ -83,16 +83,6 @@ export default function SetMeetScreen() {
 
   return (
     <>
-      <Stack.Screen
-        options={{
-          title: 'Next Competition',
-          headerRight: () => (
-            <Pressable onPress={handleSave}>
-              <Text className="items-center justify-center text-blue-energy text-base font-semibold px-2">Save</Text>
-            </Pressable>
-          ),
-        }}
-      />
       <KeyboardAvoidingView
         className="flex-1"
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -103,12 +93,22 @@ export default function SetMeetScreen() {
           contentInsetAdjustmentBehavior="automatic"
           keyboardDismissMode="on-drag"
         >
+          <View className="mb-4 flex-row justify-end">
+            <Pressable
+              onPress={handleSave}
+              className="rounded-full bg-blue-energy px-5 py-2.5"
+              style={{ borderCurve: 'continuous' }}
+            >
+              <Text className="text-white text-base font-semibold">Save</Text>
+            </Pressable>
+          </View>
+
           <Text className="text-gray-500 text-sm uppercase tracking-wider mb-2 ml-1">
             Meet Name
           </Text>
           <TextInput
-            className="bg-card-background text-text-title text-base rounded-xl px-4 py-3.5"
-            style={{ borderCurve: 'continuous' }}
+            className="bg-card-background text-text-title text-base rounded-xl px-4"
+            style={{ borderCurve: 'continuous', height: 56, paddingVertical: 0, lineHeight: 22 }}
             placeholder="e.g. National Championships"
             placeholderTextColor="#8E8E93"
             value={meetName}

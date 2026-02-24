@@ -184,6 +184,11 @@ const WorkoutCard = ({ program, selectedDate }: WorkoutCardProps) => {
       await handleMoveWorkout(moveDate);
     };
 
+    const handleQuickMove = async (targetDate: Date) => {
+      setShowMoveModal(false);
+      await handleMoveWorkout(targetDate);
+    };
+
     return (
       <ScrollView className="bg-background p-4">
         {Platform.OS === "android" && <View className="h-44" />}
@@ -255,7 +260,7 @@ const WorkoutCard = ({ program, selectedDate }: WorkoutCardProps) => {
                 />
                 <Pressable
                   className="px-3 py-1 rounded-lg bg-day-card"
-                  onPress={() => setMoveDate(new Date())}
+                  onPress={() => handleQuickMove(new Date())}
                 >
                   <Text className="text-text-title text-base font-medium">
                     Today
@@ -263,7 +268,7 @@ const WorkoutCard = ({ program, selectedDate }: WorkoutCardProps) => {
                 </Pressable>
                 <Pressable
                   className="px-3 py-1 rounded-lg bg-day-card"
-                  onPress={() => setMoveDate(addDays(new Date(), 1))}
+                  onPress={() => handleQuickMove(addDays(new Date(), 1))}
                 >
                   <Text className="text-text-title text-base font-medium">
                     Tomorrow
@@ -272,13 +277,13 @@ const WorkoutCard = ({ program, selectedDate }: WorkoutCardProps) => {
               </View>
 
               <View className="flex-row justify-end gap-x-3">
-                <Pressable onPress={() => setShowMoveModal(false)}>
-                  <Text className="text-text-title text-base">Cancel</Text>
-                </Pressable>
                 <Pressable onPress={handleIOSConfirm}>
                   <Text className="text-blue-500 text-base font-semibold">
                     Move
                   </Text>
+                </Pressable>
+                <Pressable onPress={() => setShowMoveModal(false)}>
+                  <Text className="text-text-title text-base">Cancel</Text>
                 </Pressable>
               </View>
             </Pressable>

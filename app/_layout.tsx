@@ -199,11 +199,9 @@ function RootStack() {
         name="set-meet"
         options={{
           presentation: "formSheet",
-          headerShown: true,
+          headerShown: false,
           sheetGrabberVisible: true,
           sheetAllowedDetents: [0.75, 1.0],
-          headerStyle: { backgroundColor: bg },
-          headerTintColor: bg === "#000000" ? "#FFFFFF" : "#000000",
           contentStyle: { backgroundColor: bg },
         }}
       />
