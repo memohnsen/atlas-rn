@@ -3,7 +3,7 @@ import { Stack, useRouter, useSegments } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { HeroUINativeProvider, useThemeColor } from "heroui-native";
 import { useCallback, useEffect, useState, type ReactNode } from "react";
-import { useColorScheme, View, Text } from "react-native";
+import { useColorScheme, View, Text, Modal, Pressable, ActivityIndicator } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import Animated, {
   useAnimatedStyle,
@@ -15,6 +15,7 @@ import Animated, {
 import { ConvexReactClient } from "convex/react";
 import { ConvexProviderWithClerk } from "convex/react-clerk";
 import * as SecureStore from "expo-secure-store";
+import * as Updates from "expo-updates";
 import "../global.css";
 import { CoachProvider } from "@/components/CoachProvider";
 import { OnboardingProvider, useOnboarding } from "@/components/OnboardingProvider";
@@ -209,6 +210,143 @@ function RootStack() {
   );
 }
 
+function OtaUpdateModal() {
+  const colorScheme = useColorScheme();
+  const isDark = colorScheme === "dark";
+  const [visible, setVisible] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
+  const [isDownloaded, setIsDownloaded] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    let isMounted = true;
+    const checkForUpdates = async () => {
+      if (!Updates.isEnabled) return;
+      try {
+        const result = await Updates.checkForUpdateAsync();
+        if (!isMounted || !result.isAvailable) return;
+        setVisible(true);
+      } catch {
+        // Ignore check failures in environments where updates are unavailable.
+      }
+    };
+    checkForUpdates();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const handleDownload = async () => {
+    try {
+      setIsDownloading(true);
+      setErrorMessage(null);
+      await Updates.fetchUpdateAsync();
+      setIsDownloaded(true);
+    } catch {
+      setErrorMessage("Download failed. Please try again.");
+    } finally {
+      setIsDownloading(false);
+    }
+  };
+
+  const handleRestartNow = async () => {
+    try {
+      await Updates.reloadAsync();
+    } catch {
+      setErrorMessage("Could not restart app. Please reopen manually.");
+    }
+  };
+
+  return (
+    <Modal transparent visible={visible} animationType="fade" onRequestClose={() => setVisible(false)}>
+      <View
+        style={{
+          flex: 1,
+          backgroundColor: "rgba(0,0,0,0.45)",
+          justifyContent: "center",
+          paddingHorizontal: 24,
+        }}
+      >
+        <View
+          style={{
+            borderRadius: 20,
+            borderCurve: "continuous",
+            backgroundColor: isDark ? "#1C1C1E" : "#FFFFFF",
+            padding: 20,
+            gap: 12,
+          }}
+        >
+          <Text style={{ color: isDark ? "#FFF" : "#111827", fontSize: 22, fontWeight: "800" }}>
+            Update Available
+          </Text>
+          <Text style={{ color: isDark ? "#A1A1AA" : "#6B7280", fontSize: 15, lineHeight: 22 }}>
+            {isDownloaded
+              ? "The new version is downloaded and ready to install."
+              : "A newer app version is ready. Download now?"}
+          </Text>
+          {errorMessage ? (
+            <Text style={{ color: "#EF4444", fontSize: 14, fontWeight: "600" }}>
+              {errorMessage}
+            </Text>
+          ) : null}
+          {!isDownloaded ? (
+            <View style={{ flexDirection: "row", justifyContent: "flex-end", gap: 12, marginTop: 4 }}>
+              <Pressable onPress={() => setVisible(false)} style={{ paddingHorizontal: 12, paddingVertical: 10 }}>
+                <Text style={{ color: isDark ? "#E5E7EB" : "#374151", fontSize: 16, fontWeight: "600" }}>
+                  Cancel
+                </Text>
+              </Pressable>
+              <Pressable
+                disabled={isDownloading}
+                onPress={handleDownload}
+                style={{
+                  borderRadius: 12,
+                  borderCurve: "continuous",
+                  backgroundColor: "#5386E4",
+                  paddingHorizontal: 16,
+                  paddingVertical: 10,
+                  minWidth: 110,
+                  alignItems: "center",
+                  justifyContent: "center",
+                  opacity: isDownloading ? 0.75 : 1,
+                }}
+              >
+                {isDownloading ? (
+                  <ActivityIndicator color="#FFFFFF" />
+                ) : (
+                  <Text style={{ color: "#FFF", fontSize: 16, fontWeight: "700" }}>Download</Text>
+                )}
+              </Pressable>
+            </View>
+          ) : (
+            <View style={{ flexDirection: "row", justifyContent: "flex-end", gap: 12, marginTop: 4 }}>
+              <Pressable onPress={() => setVisible(false)} style={{ paddingHorizontal: 12, paddingVertical: 10 }}>
+                <Text style={{ color: isDark ? "#E5E7EB" : "#374151", fontSize: 16, fontWeight: "600" }}>
+                  Later
+                </Text>
+              </Pressable>
+              <Pressable
+                onPress={handleRestartNow}
+                style={{
+                  borderRadius: 12,
+                  borderCurve: "continuous",
+                  backgroundColor: "#5386E4",
+                  paddingHorizontal: 16,
+                  paddingVertical: 10,
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <Text style={{ color: "#FFF", fontSize: 16, fontWeight: "700" }}>Restart now</Text>
+              </Pressable>
+            </View>
+          )}
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
 export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
@@ -221,6 +359,7 @@ export default function RootLayout() {
                   <AuthGate>
                     <RootStack />
                   </AuthGate>
+                  <OtaUpdateModal />
                 </CoachProvider>
               </UnitProvider>
             </OnboardingProvider>

@@ -62,6 +62,8 @@ export default {
     owner: "memohnsen",
     updates: {
       url: "https://u.expo.dev/a7687e59-43ce-4461-b680-94556369a374",
+      checkAutomatically: "ON_LOAD",
+      fallbackToCacheTimeout: 0,
     },
   },
 };
