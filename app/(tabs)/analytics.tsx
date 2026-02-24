@@ -4,7 +4,6 @@ import LineTrendCard from "@/components/LineTrendCard";
 import {
   AnalyticsPoint,
   AnalyticsRange,
-  buildCompletionTrend,
   buildDayRatingTrend,
   buildIntensityTrend,
   buildVolumeTrend,
@@ -42,7 +41,6 @@ const AnalyticsScreen = () => {
   const points = analyticsData ?? [];
 
   const volumeTrend = useMemo(() => buildVolumeTrend(points), [points]);
-  const completionTrend = useMemo(() => buildCompletionTrend(points), [points]);
   const intensityTrend = useMemo(() => buildIntensityTrend(points), [points]);
   const dayRatingTrend = useMemo(() => buildDayRatingTrend(points), [points]);
 
@@ -64,13 +62,6 @@ const AnalyticsScreen = () => {
               color="#5386E4"
               points={volumeTrend}
               valueFormatter={(value) => Math.round(value).toString()}
-            />
-            <LineTrendCard
-              title="Completion Rate"
-              subtitle="Completed sessions per week"
-              color="#10B981"
-              points={completionTrend}
-              valueFormatter={(value) => `${Math.round(value)}%`}
             />
             <LineTrendCard
               title="Session Intensity"

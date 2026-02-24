@@ -17,6 +17,7 @@ type LineTrendCardProps = {
 };
 
 const CHART_HEIGHT = 140;
+const Y_AXIS_LABEL_WIDTH = 42;
 const CHART_PADDING_LEFT = 24;
 const CHART_PADDING_RIGHT = 28;
 const CHART_PADDING_TOP = 18;
@@ -40,8 +41,9 @@ const LineTrendCard = ({
   }, [points]);
 
   const chartData = useMemo(() => {
+    const plotWidth = Math.max(width - Y_AXIS_LABEL_WIDTH, 0);
     if (
-      width <= CHART_PADDING_LEFT + CHART_PADDING_RIGHT ||
+      plotWidth <= CHART_PADDING_LEFT + CHART_PADDING_RIGHT ||
       chartPoints.length === 0
     ) {
       return {
@@ -56,7 +58,7 @@ const LineTrendCard = ({
     const minValue = Math.min(...values);
     const maxValue = Math.max(...values);
     const valueRange = maxValue - minValue || 1;
-    const drawableWidth = width - CHART_PADDING_LEFT - CHART_PADDING_RIGHT;
+    const drawableWidth = plotWidth - CHART_PADDING_LEFT - CHART_PADDING_RIGHT;
     const drawableHeight =
       CHART_HEIGHT - CHART_PADDING_TOP - CHART_PADDING_BOTTOM;
 
@@ -81,6 +83,13 @@ const LineTrendCard = ({
     return { path, projected, minValue, maxValue };
   }, [chartPoints, width]);
 
+  const yAxisLabels = useMemo(() => {
+    const min = chartData.minValue;
+    const max = chartData.maxValue;
+    const mid = min + (max - min) / 2;
+    return [max, mid, min].map((value) => valueFormatter(value));
+  }, [chartData.maxValue, chartData.minValue, valueFormatter]);
+
   const handleLayout = (event: LayoutChangeEvent) => {
     const nextWidth = Math.round(event.nativeEvent.layout.width);
     if (nextWidth !== width) setWidth(nextWidth);
@@ -103,42 +112,55 @@ const LineTrendCard = ({
         </View>
       ) : (
         <View style={{ marginTop: 12 }} onLayout={handleLayout}>
-          <Svg width={width || 1} height={CHART_HEIGHT}>
-            <Line
-              x1={CHART_PADDING_LEFT}
-              y1={CHART_HEIGHT - CHART_PADDING_BOTTOM}
-              x2={(width || 0) - CHART_PADDING_RIGHT}
-              y2={CHART_HEIGHT - CHART_PADDING_BOTTOM}
-              stroke="rgba(156,163,175,0.35)"
-              strokeWidth={1}
-            />
-            {chartData.path ? (
-              <Path
-                d={chartData.path}
-                stroke={color}
-                strokeWidth={3}
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                fill="none"
+          <View style={{ flexDirection: "row", alignItems: "stretch" }}>
+            <View
+              style={{
+                width: Y_AXIS_LABEL_WIDTH,
+                height: CHART_HEIGHT,
+                justifyContent: "space-between",
+                paddingTop: CHART_PADDING_TOP,
+                paddingBottom: CHART_PADDING_BOTTOM - 4,
+              }}
+            >
+              {yAxisLabels.map((label, index) => (
+                <Text
+                  key={`${title}-y-${index}`}
+                  className="text-gray-500 text-xs"
+                  style={{ textAlign: "right", paddingRight: 6 }}
+                >
+                  {label}
+                </Text>
+              ))}
+            </View>
+            <Svg width={Math.max((width || 0) - Y_AXIS_LABEL_WIDTH, 1)} height={CHART_HEIGHT}>
+              <Line
+                x1={CHART_PADDING_LEFT}
+                y1={CHART_HEIGHT - CHART_PADDING_BOTTOM}
+                x2={Math.max((width || 0) - Y_AXIS_LABEL_WIDTH, 1) - CHART_PADDING_RIGHT}
+                y2={CHART_HEIGHT - CHART_PADDING_BOTTOM}
+                stroke="rgba(156,163,175,0.35)"
+                strokeWidth={1}
               />
-            ) : null}
-            {chartData.projected.map((point) => (
-              <Circle
-                key={`${title}-${point.label}-${point.x}`}
-                cx={point.x}
-                cy={point.y}
-                r={4}
-                fill={color}
-              />
-            ))}
-          </Svg>
-          <View className="mt-1 flex-row justify-between">
-            <Text className="text-gray-500 text-xs">
-              Min {valueFormatter(chartData.minValue)}
-            </Text>
-            <Text className="text-gray-500 text-xs">
-              Max {valueFormatter(chartData.maxValue)}
-            </Text>
+              {chartData.path ? (
+                <Path
+                  d={chartData.path}
+                  stroke={color}
+                  strokeWidth={3}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  fill="none"
+                />
+              ) : null}
+              {chartData.projected.map((point) => (
+                <Circle
+                  key={`${title}-${point.label}-${point.x}`}
+                  cx={point.x}
+                  cy={point.y}
+                  r={4}
+                  fill={color}
+                />
+              ))}
+            </Svg>
           </View>
         </View>
       )}
