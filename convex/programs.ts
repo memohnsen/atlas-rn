@@ -462,10 +462,9 @@ export const updateProgram = mutation({
     ),
   },
   handler: async (ctx, args) => {
-    const userId = await getUserId(ctx);
+    await getUserId(ctx);
     const program = await ctx.db.get(args.programId);
     if (!program) throw new Error("Program not found");
-    if (program.userId !== userId) throw new Error("Unauthorized");
 
     await ctx.db.patch(args.programId, {
       athleteName: args.athleteName,
@@ -637,10 +636,9 @@ export const markDayComplete = mutation({
     ),
   },
   handler: async (ctx, args) => {
-    const userId = await getUserId(ctx);
+    await getUserId(ctx);
     const program = await ctx.db.get(args.programId);
     if (!program) throw new Error("Program not found");
-    if (program.userId !== userId) throw new Error("Unauthorized");
 
     const updatedWeeks = program.weeks.map((week) => {
       if (week.weekNumber !== args.weekNumber) return week;
@@ -675,10 +673,9 @@ export const markExerciseComplete = mutation({
     weight: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    const userId = await getUserId(ctx);
+    await getUserId(ctx);
     const program = await ctx.db.get(args.programId);
     if (!program) throw new Error("Program not found");
-    if (program.userId !== userId) throw new Error("Unauthorized");
 
     const updatedWeeks = program.weeks.map((week) => {
       if (week.weekNumber !== args.weekNumber) return week;
@@ -747,10 +744,9 @@ export const updateExerciseSets = mutation({
     sets: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    const userId = await getUserId(ctx);
+    await getUserId(ctx);
     const program = await ctx.db.get(args.programId);
     if (!program) throw new Error("Program not found");
-    if (program.userId !== userId) throw new Error("Unauthorized");
 
     const updatedWeeks = program.weeks.map((week) => {
       if (week.weekNumber !== args.weekNumber) return week;
@@ -793,10 +789,9 @@ export const updateExerciseNotes = mutation({
     notes: v.string(),
   },
   handler: async (ctx, args) => {
-    const userId = await getUserId(ctx);
+    await getUserId(ctx);
     const program = await ctx.db.get(args.programId);
     if (!program) throw new Error("Program not found");
-    if (program.userId !== userId) throw new Error("Unauthorized");
 
     const updatedWeeks = program.weeks.map((week) => {
       if (week.weekNumber !== args.weekNumber) return week;
@@ -835,10 +830,9 @@ export const updateAthleteComments = mutation({
     comments: v.string(),
   },
   handler: async (ctx, args) => {
-    const userId = await getUserId(ctx);
+    await getUserId(ctx);
     const program = await ctx.db.get(args.programId);
     if (!program) throw new Error("Program not found");
-    if (program.userId !== userId) throw new Error("Unauthorized");
 
     const updatedWeeks = program.weeks.map((week) => {
       if (week.weekNumber !== args.weekNumber) return week;
@@ -882,10 +876,9 @@ export const updateDayRating = mutation({
     ),
   },
   handler: async (ctx, args) => {
-    const userId = await getUserId(ctx);
+    await getUserId(ctx);
     const program = await ctx.db.get(args.programId);
     if (!program) throw new Error("Program not found");
-    if (program.userId !== userId) throw new Error("Unauthorized");
 
     const updatedWeeks = program.weeks.map((week) => {
       if (week.weekNumber !== args.weekNumber) return week;
@@ -916,10 +909,9 @@ export const updateDaySessionIntensity = mutation({
     sessionIntensity: v.number(),
   },
   handler: async (ctx, args) => {
-    const userId = await getUserId(ctx);
+    await getUserId(ctx);
     const program = await ctx.db.get(args.programId);
     if (!program) throw new Error("Program not found");
-    if (program.userId !== userId) throw new Error("Unauthorized");
 
     const updatedWeeks = program.weeks.map((week) => {
       if (week.weekNumber !== args.weekNumber) return week;

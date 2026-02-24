@@ -949,23 +949,21 @@ const ExerciseCard = ({
     >
       {/* Exercise header */}
       <Pressable
-        onPress={() => {
+        onPress={async () => {
           const nextCompleted = !exercise.completed
           if (!nextCompleted) {
             onToggle(exercise.exerciseNumber, exercise.completed)
             return
           }
 
-          const eligibleWeights = weightsBySet
-            .map((value, index) => {
-              const weight = Number(value)
-              if (!Number.isFinite(weight) || weight <= 0) return null
-              if (statusesBySet[index] === 'miss') return null
-              return toStorageWeight(weight)
-            })
-            .filter((value): value is number => typeof value === 'number')
+          const nextStatuses: SetStatus[] = Array.from(
+            { length: setCount },
+            () => 'complete'
+          )
+          setStatusesBySet(nextStatuses)
+          await persistSets({ statuses: nextStatuses })
 
-          const heaviest = eligibleWeights.length > 0 ? Math.max(...eligibleWeights) : undefined
+          const heaviest = getHeaviestNonMissWeight(weightsBySet, nextStatuses)
           onToggle(exercise.exerciseNumber, exercise.completed, heaviest)
         }}
         style={{
@@ -1350,7 +1348,7 @@ const ExerciseCard = ({
             onPress={() => {
               const nextReps = [...repsBySet, repsBySet[repsBySet.length - 1] ?? '']
               const nextWeights = [...weightsBySet, weightsBySet[weightsBySet.length - 1] ?? '']
-              const nextStatuses = [...statusesBySet, 'pending']
+              const nextStatuses: SetStatus[] = [...statusesBySet, 'pending']
               const nextPercents = [...percentBySet]
               if (percentBySet.length > 0) {
                 nextPercents.push(percentBySet[percentBySet.length - 1])
