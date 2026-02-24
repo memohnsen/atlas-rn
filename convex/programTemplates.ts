@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 import { query, mutation } from "./_generated/server";
 import { getUserId } from "./auth";
+import { computeInitialScheduledDate } from "./schedule";
 
 // Get all templates for a user
 export const getTemplates = query({
@@ -78,6 +79,7 @@ export const saveTemplate = mutation({
             dayNumber: v.number(),
             dayOfWeek: v.optional(v.string()),
             dayLabel: v.optional(v.string()),
+            scheduledDate: v.optional(v.string()),
             exercises: v.array(
               v.object({
                 exerciseNumber: v.number(),
@@ -186,6 +188,9 @@ export const assignTemplateToAthlete = mutation({
         ...week,
         days: week.days.map((day) => ({
           ...day,
+          scheduledDate:
+            day.scheduledDate ??
+            computeInitialScheduledDate(day, week.weekNumber, args.startDate),
           completed: false,
           rating: undefined,
           completedAt: undefined,

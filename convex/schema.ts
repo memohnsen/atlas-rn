@@ -35,6 +35,7 @@ export default defineSchema({
             dayNumber: v.number(),
             dayOfWeek: v.optional(v.string()),
             dayLabel: v.optional(v.string()),
+            scheduledDate: v.optional(v.string()),
 
             // Day-level completion tracking (REAL-TIME CRITICAL)
             completed: v.boolean(),
@@ -125,6 +126,7 @@ export default defineSchema({
             dayNumber: v.number(),
             dayOfWeek: v.optional(v.string()),
             dayLabel: v.optional(v.string()),
+            scheduledDate: v.optional(v.string()),
             exercises: v.array(
               v.object({
                 exerciseNumber: v.number(),

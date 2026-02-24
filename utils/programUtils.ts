@@ -1,6 +1,52 @@
 import { Day, DayRating, Exercise, Program, Week } from '@/types/program';
 import { addDays, format } from 'date-fns';
 
+const dayLabelToDayOfWeek: Record<string, number> = {
+  sunday: 0,
+  sun: 0,
+  monday: 1,
+  mon: 1,
+  tuesday: 2,
+  tue: 2,
+  tues: 2,
+  wednesday: 3,
+  wed: 3,
+  thursday: 4,
+  thu: 4,
+  thur: 4,
+  thurs: 4,
+  friday: 5,
+  fri: 5,
+  saturday: 6,
+  sat: 6,
+}
+
+export const resolveProgramDayDate = (
+  program: Program | undefined,
+  day: Day,
+  weekNumber: number
+) => {
+  if (!program) return null
+  if (day.scheduledDate) return day.scheduledDate
+
+  const programStart = new Date(program.startDate)
+  const programStartDayOfWeek = programStart.getDay()
+  const weekOffset = (weekNumber - 1) * 7
+  const dayKey = (day.dayLabel ?? day.dayOfWeek ?? '').trim().toLowerCase()
+  const targetDayOfWeek = dayLabelToDayOfWeek[dayKey]
+
+  if (targetDayOfWeek === undefined) {
+    const fallbackDate = addDays(programStart, weekOffset + Math.max(day.dayNumber - 1, 0))
+    return format(fallbackDate, 'yyyy-MM-dd')
+  }
+
+  let dayOffset = targetDayOfWeek - programStartDayOfWeek
+  if (dayOffset < 0) dayOffset += 7
+
+  const trainingDate = addDays(programStart, weekOffset + dayOffset)
+  return format(trainingDate, 'yyyy-MM-dd')
+}
+
 /**
  * Find a training day by its calendar date
  * @param program The training program
@@ -13,37 +59,11 @@ export const getTrainingDayByDate = (
 ): { day: Day; week: Week } | null => {
   if (!program) return null
 
-  const programStart = new Date(program.startDate)
-  const programStartDayOfWeek = programStart.getDay() // 0 = Sunday, 1 = Monday, etc.
   const targetDateStr = format(targetDate, 'yyyy-MM-dd')
-
-  // Map day labels to day of week numbers (0 = Sunday, 1 = Monday, 6 = Saturday)
-  const dayLabelToDayOfWeek: Record<string, number> = {
-    Sunday: 0,
-    Monday: 1,
-    Tuesday: 2,
-    Wednesday: 3,
-    Thursday: 4,
-    Friday: 5,
-    Saturday: 6,
-  }
 
   for (const week of program.weeks) {
     for (const day of week.days) {
-      // Calculate the actual date for this training day
-      const weekOffset = (week.weekNumber - 1) * 7
-
-      // Get the target day of week for this training day
-      const targetDayOfWeek = dayLabelToDayOfWeek[day.dayLabel || '']
-
-      if (targetDayOfWeek === undefined) continue
-
-      // Calculate how many days from program start to this training day
-      let dayOffset = targetDayOfWeek - programStartDayOfWeek
-      if (dayOffset < 0) dayOffset += 7 // Handle wrap-around (e.g., if program starts Wed and training is Mon)
-
-      const trainingDate = addDays(programStart, weekOffset + dayOffset)
-      const trainingDateStr = format(trainingDate, 'yyyy-MM-dd')
+      const trainingDateStr = resolveProgramDayDate(program, day, week.weekNumber)
 
       if (trainingDateStr === targetDateStr) {
         return { day, week }

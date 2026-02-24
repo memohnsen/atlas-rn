@@ -34,6 +34,7 @@ export interface Day {
   dayNumber: number
   dayOfWeek?: string
   dayLabel?: string
+  scheduledDate?: string
   completed: boolean
   rating?: DayRating
   sessionIntensity?: number

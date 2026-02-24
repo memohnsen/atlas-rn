@@ -3,10 +3,15 @@ import { useUnit } from '@/components/UnitProvider'
 import { api } from '@/convex/_generated/api'
 import { Id } from '@/convex/_generated/dataModel'
 import { DayRating, Program } from '@/types/program'
-import { getEffectivePercent, getOneRepMax, getTrainingDayByDate } from '@/utils/programUtils'
+import {
+  getEffectivePercent,
+  getOneRepMax,
+  resolveProgramDayDate,
+  getTrainingDayByDate,
+} from '@/utils/programUtils'
 import { useAuth } from '@clerk/clerk-expo'
 import { useQuery } from 'convex/react'
-import { parse } from 'date-fns'
+import { format, parse } from 'date-fns'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import * as Sharing from 'expo-sharing'
 import { SymbolView } from 'expo-symbols'
@@ -113,6 +118,13 @@ const TrainingSummary = () => {
 
   const activeReadiness = readiness ?? currentDay.rating ?? 'Average'
   const activeIntensity = intensity ? Number(intensity) : currentDay.sessionIntensity ?? null
+  const sessionDayLabel = useMemo(() => {
+    const resolvedDate = resolveProgramDayDate(program, currentDay, weekNumber)
+    if (!resolvedDate) return currentDay.dayLabel
+    const [year, month, day] = resolvedDate.split('-').map(Number)
+    if (!year || !month || !day) return currentDay.dayLabel
+    return format(new Date(year, month - 1, day), 'EEEE')
+  }, [currentDay, program, weekNumber])
 
   const colors = {
     bg: isDark ? '#000000' : '#FFFFFF',
@@ -274,8 +286,8 @@ const TrainingSummary = () => {
             <Text style={{ color: colors.text, fontSize: 24, fontWeight: '800', letterSpacing: -0.5 }}>
               W{weekNumber}D{currentDay.dayNumber}
             </Text>
-            {currentDay.dayLabel && (
-              <Text style={{ color: colors.textSecondary, fontSize: 14 }}>{currentDay.dayLabel}</Text>
+            {sessionDayLabel && (
+              <Text style={{ color: colors.textSecondary, fontSize: 14 }}>{sessionDayLabel}</Text>
             )}
 
             <View style={{ flexDirection: 'row', gap: 10, marginTop: 6, flexWrap: 'wrap' }}>
@@ -400,8 +412,8 @@ const TrainingSummary = () => {
               <Text style={{ color: '#FFFFFF', fontSize: 34, fontWeight: '800', letterSpacing: -0.6 }}>
                 W{weekNumber}D{currentDay.dayNumber}
               </Text>
-              {currentDay.dayLabel && (
-                <Text style={{ color: '#9AA7FF', fontSize: 16, fontWeight: '600' }}>{currentDay.dayLabel}</Text>
+              {sessionDayLabel && (
+                <Text style={{ color: '#9AA7FF', fontSize: 16, fontWeight: '600' }}>{sessionDayLabel}</Text>
               )}
             </View>
 

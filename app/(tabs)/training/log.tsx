@@ -6,12 +6,13 @@ import { DayRating, Exercise, Program } from '@/types/program'
 import {
   getEffectivePercent,
   getOneRepMax,
+  resolveProgramDayDate,
   getTrainingDayByDate,
   groupExercisesBySuperset,
 } from '@/utils/programUtils'
 import { useMutation, useQuery } from 'convex/react'
 import { useAuth } from '@clerk/clerk-expo'
-import { parse } from 'date-fns'
+import { format, parse } from 'date-fns'
 import * as Haptics from 'expo-haptics'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import * as StoreReview from 'expo-store-review'
@@ -161,6 +162,13 @@ const TrainingLog = () => {
   }
 
   const activeReadiness = readiness ?? currentDay.rating ?? 'Average'
+  const sessionDayLabel = useMemo(() => {
+    const resolvedDate = resolveProgramDayDate(program, currentDay, weekNumber)
+    if (!resolvedDate) return currentDay.dayLabel
+    const [year, month, day] = resolvedDate.split('-').map(Number)
+    if (!year || !month || !day) return currentDay.dayLabel
+    return format(new Date(year, month - 1, day), 'EEEE')
+  }, [currentDay, program, weekNumber])
 
   // ─── Handlers ──────────────────────────────────────────
 
@@ -337,9 +345,9 @@ const TrainingLog = () => {
           <Text style={{ color: colors.text, fontSize: 28, fontWeight: '700', letterSpacing: -0.5 }}>
             W{weekNumber}D{currentDay.dayNumber}
           </Text>
-          {currentDay.dayLabel && (
+          {sessionDayLabel && (
             <Text style={{ color: colors.textSecondary, fontSize: 15, fontWeight: '500' }}>
-              {currentDay.dayLabel}
+              {sessionDayLabel}
             </Text>
           )}
           {coachEnabled && (

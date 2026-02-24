@@ -14,6 +14,7 @@ import type * as auth from "../auth.js";
 import type * as exerciseLibrary from "../exerciseLibrary.js";
 import type * as programTemplates from "../programTemplates.js";
 import type * as programs from "../programs.js";
+import type * as schedule from "../schedule.js";
 
 import type {
   ApiFromModules,
@@ -28,6 +29,7 @@ declare const fullApi: ApiFromModules<{
   exerciseLibrary: typeof exerciseLibrary;
   programTemplates: typeof programTemplates;
   programs: typeof programs;
+  schedule: typeof schedule;
 }>;
 
 /**

@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 import { query, mutation } from "./_generated/server";
 import { getUserId } from "./auth";
+import { computeInitialScheduledDate, resolveEffectiveDayDate } from "./schedule";
 
 const normalizeExerciseName = (value: string) =>
   value.toLowerCase().trim().replace(/\s+/g, " ");
@@ -231,18 +232,22 @@ export const getAthleteScheduleSummaries = query({
     >();
 
     programs.forEach((program) => {
-      const startDate = new Date(program.startDate);
-      const totalDays = program.weeks.reduce(
-        (sum, week) => sum + week.days.length,
-        0
+      const effectiveDates = program.weeks.flatMap((week) =>
+        week.days.map((day) =>
+          resolveEffectiveDayDate(day, week.weekNumber, program.startDate)
+        )
       );
-      const lastDate = new Date(startDate);
-      lastDate.setDate(lastDate.getDate() + totalDays - 1);
+      const sortedEffectiveDates = effectiveDates.sort();
+      const lastScheduledDate =
+        sortedEffectiveDates.length > 0
+          ? sortedEffectiveDates[sortedEffectiveDates.length - 1]
+          : null;
+      if (!lastScheduledDate) return;
 
       const existing = athleteMap.get(program.athleteName);
-      const lastScheduledDate = lastDate.toISOString().split("T")[0];
-
       if (!existing || lastScheduledDate > existing.lastScheduledDate!) {
+        const [year, month, day] = lastScheduledDate.split("-").map(Number);
+        const lastDate = new Date(year, month - 1, day);
         const today = new Date();
         const daysRemaining = Math.ceil(
           (lastDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
@@ -312,6 +317,7 @@ export const insertProgram = mutation({
             dayNumber: v.number(),
             dayOfWeek: v.optional(v.string()),
             dayLabel: v.optional(v.string()),
+            scheduledDate: v.optional(v.string()),
             completed: v.boolean(),
             rating: v.optional(
               v.union(
@@ -357,6 +363,16 @@ export const insertProgram = mutation({
   },
   handler: async (ctx, args) => {
     const userId = await getUserId(ctx);
+    const weeksWithScheduledDates = args.weeks.map((week) => ({
+      ...week,
+      days: week.days.map((day) => ({
+        ...day,
+        scheduledDate:
+          day.scheduledDate ??
+          computeInitialScheduledDate(day, week.weekNumber, args.startDate),
+      })),
+    }));
+
     const programId = await ctx.db.insert("programs", {
       userId,
       athleteName: args.athleteName,
@@ -365,7 +381,7 @@ export const insertProgram = mutation({
       weekCount: args.weekCount,
       repTargets: args.repTargets,
       weekTotals: args.weekTotals,
-      weeks: args.weeks,
+      weeks: weeksWithScheduledDates,
     });
 
     return programId;
@@ -401,6 +417,7 @@ export const updateProgram = mutation({
             dayNumber: v.number(),
             dayOfWeek: v.optional(v.string()),
             dayLabel: v.optional(v.string()),
+            scheduledDate: v.optional(v.string()),
             completed: v.boolean(),
             rating: v.optional(
               v.union(
@@ -515,6 +532,90 @@ export const deleteAthleteData = mutation({
     }
 
     return programs.length;
+  },
+});
+
+export const moveWorkoutDay = mutation({
+  args: {
+    programId: v.id("programs"),
+    sourceWeekNumber: v.number(),
+    sourceDayNumber: v.number(),
+    targetDate: v.string(),
+  },
+  handler: async (ctx, args) => {
+    await getUserId(ctx);
+    const program = await ctx.db.get(args.programId);
+    if (!program) throw new Error("Program not found");
+
+    let sourceDate = "";
+    let targetWeekNumber: number | null = null;
+    let targetDayNumber: number | null = null;
+
+    const sourceDay = program.weeks
+      .flatMap((week) => week.days.map((day) => ({ weekNumber: week.weekNumber, day })))
+      .find(
+        (entry) =>
+          entry.weekNumber === args.sourceWeekNumber &&
+          entry.day.dayNumber === args.sourceDayNumber
+      );
+
+    if (!sourceDay) throw new Error("Workout day not found");
+    if (sourceDay.day.completed) throw new Error("Completed workouts cannot be moved");
+
+    sourceDate = resolveEffectiveDayDate(
+      sourceDay.day,
+      sourceDay.weekNumber,
+      program.startDate
+    );
+
+    for (const week of program.weeks) {
+      for (const day of week.days) {
+        const effectiveDate = resolveEffectiveDayDate(
+          day,
+          week.weekNumber,
+          program.startDate
+        );
+        if (
+          effectiveDate === args.targetDate &&
+          !(
+            week.weekNumber === args.sourceWeekNumber &&
+            day.dayNumber === args.sourceDayNumber
+          )
+        ) {
+          targetWeekNumber = week.weekNumber;
+          targetDayNumber = day.dayNumber;
+        }
+      }
+    }
+
+    const updatedWeeks = program.weeks.map((week) => ({
+      ...week,
+      days: week.days.map((day) => {
+        if (
+          week.weekNumber === args.sourceWeekNumber &&
+          day.dayNumber === args.sourceDayNumber
+        ) {
+          return {
+            ...day,
+            scheduledDate: args.targetDate,
+          };
+        }
+        if (
+          targetWeekNumber !== null &&
+          targetDayNumber !== null &&
+          week.weekNumber === targetWeekNumber &&
+          day.dayNumber === targetDayNumber
+        ) {
+          return {
+            ...day,
+            scheduledDate: sourceDate,
+          };
+        }
+        return day;
+      }),
+    }));
+
+    await ctx.db.patch(args.programId, { weeks: updatedWeeks });
   },
 });
 
