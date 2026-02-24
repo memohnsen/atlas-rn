@@ -14,7 +14,9 @@ type CoachContextValue = {
   isHydrated: boolean
 }
 
-const COACH_USER_ID = 'user_2vH3UoiRGEC3ux7UPTAetUE2wAQ'
+const COACH_USER_ID =
+  process.env.EXPO_PUBLIC_ADMIN_CLERK_USER_ID ??
+  'user_2vH3UoiRGEC3ux7UPTAetUE2wAQ'
 const COACH_MODE_KEY = 'coachModeEnabled'
 const COACH_ATHLETE_KEY = 'coachSelectedAthlete'
 

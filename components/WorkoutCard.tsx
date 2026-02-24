@@ -52,23 +52,44 @@ const WorkoutCard = ({ program, selectedDate }: WorkoutCardProps) => {
   // View
   if (program === undefined) {
     return (
-      <>
+      <ScrollView className="bg-background p-4" contentContainerStyle={{ flexGrow: 1 }}>
         {Platform.OS === "android" && <View className="h-44" />}
         {Platform.OS === "ios" && <View className="h-30" />}
-        <View className="flex-1 justify-center items-center">
-          <Text className="text-text-title">Loading workout...</Text>
+        <View className="flex-1 justify-center">
+          <View
+            className="rounded-2xl bg-card-background p-6"
+            style={{ borderCurve: "continuous" }}
+          >
+            <Text className="text-text-title text-xl font-semibold">
+              Loading training
+            </Text>
+            <Text className="text-gray-500 mt-2">
+              Fetching your active program.
+            </Text>
+          </View>
         </View>
-      </>
+      </ScrollView>
     );
   } else if (!program) {
     return (
-      <>
+      <ScrollView className="bg-background p-4" contentContainerStyle={{ flexGrow: 1 }}>
         {Platform.OS === "android" && <View className="h-44" />}
         {Platform.OS === "ios" && <View className="h-30" />}
-        <View className="flex-1 justify-center items-center">
-          <Text className="text-text-title">No program found</Text>
+        <View className="flex-1 justify-center">
+          <View
+            className="rounded-2xl bg-card-background p-6"
+            style={{ borderCurve: "continuous" }}
+          >
+            <Text className="text-text-title text-xl font-semibold">
+              No program found
+            </Text>
+            <Text className="text-gray-500 mt-2 leading-6">
+              You do not have an active training program yet. Assign a program to
+              start logging sessions.
+            </Text>
+          </View>
         </View>
-      </>
+      </ScrollView>
     );
   } else {
     const result = getTrainingDayByDate(program, selectedDate);

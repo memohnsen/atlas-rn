@@ -41,13 +41,13 @@ const Layout = () => {
               />
               {Platform.OS === 'android' ? <Label>Library</Label> : <Label hidden /> }
           </NativeTabs.Trigger>
-          {/* <NativeTabs.Trigger name="history">
+          <NativeTabs.Trigger name="analytics">
               <Icon
-              sf={{ default: 'clock.arrow.trianglehead.counterclockwise.rotate.90', selected: 'clock.arrow.trianglehead.counterclockwise.rotate.90' }}
-              androidSrc={<VectorIcon family={MaterialCommunityIcons} name="cog" />}
+              sf={{ default: 'chart.line.uptrend.xyaxis', selected: 'chart.line.uptrend.xyaxis' }}
+              androidSrc={<VectorIcon family={MaterialCommunityIcons} name="chart-timeline-variant" />}
               />
-              {Platform.OS === 'android' ? <Label>History</Label> : <Label hidden /> }
-          </NativeTabs.Trigger> */}
+              {Platform.OS === 'android' ? <Label>Analytics</Label> : <Label hidden /> }
+          </NativeTabs.Trigger>
       </NativeTabs>
   );
 }

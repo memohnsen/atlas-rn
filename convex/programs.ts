@@ -1,20 +1,170 @@
 import { v } from "convex/values";
-import { query, mutation } from "./_generated/server";
+import { MutationCtx, QueryCtx, query, mutation } from "./_generated/server";
 import { getUserId } from "./auth";
 import { computeInitialScheduledDate, resolveEffectiveDayDate } from "./schedule";
+import { Id } from "./_generated/dataModel";
 
 const normalizeExerciseName = (value: string) =>
   value.toLowerCase().trim().replace(/\s+/g, " ");
 
-// Get all unique athletes (admin sees all programs)
+const isAdminUser = (userId: string) =>
+  Boolean(process.env.ADMIN_CLERK_USER_ID) &&
+  userId === process.env.ADMIN_CLERK_USER_ID;
+
+const DAY_RATING_TO_SCORE: Record<
+  "Trash" | "Below Average" | "Average" | "Above Average" | "Crushing It",
+  number
+> = {
+  Trash: 1,
+  "Below Average": 2,
+  Average: 3,
+  "Above Average": 4,
+  "Crushing It": 5,
+};
+
+const parseDateOnly = (value: string) => {
+  const [year, month, day] = value.split("-").map(Number);
+  if (!year || !month || !day) return null;
+  return new Date(year, month - 1, day);
+};
+
+const formatDateOnly = (date: Date) =>
+  `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(
+    date.getDate()
+  ).padStart(2, "0")}`;
+
+const getProgramEndDate = (program: { startDate: string; weekCount: number }) => {
+  const startDate = parseDateOnly(program.startDate);
+  if (!startDate) return null;
+  const totalDays = Math.max(program.weekCount * 7 - 1, 0);
+  const endDate = new Date(startDate);
+  endDate.setDate(endDate.getDate() + totalDays);
+  return formatDateOnly(endDate);
+};
+
+const pickCurrentProgram = <
+  T extends {
+    startDate: string;
+    weekCount: number;
+  }
+>(
+  programs: T[],
+  today: string
+) => {
+  const activePrograms = programs
+    .filter((program) => {
+      const endDate = getProgramEndDate(program);
+      if (!endDate) return false;
+      return today >= program.startDate && today <= endDate;
+    })
+    .sort((a, b) => (a.startDate < b.startDate ? 1 : -1));
+  if (activePrograms.length > 0) return activePrograms[0];
+
+  const pastPrograms = programs
+    .filter((program) => program.startDate <= today)
+    .sort((a, b) => (a.startDate < b.startDate ? 1 : -1));
+  if (pastPrograms.length > 0) return pastPrograms[0];
+
+  const futurePrograms = programs
+    .filter((program) => program.startDate > today)
+    .sort((a, b) => (a.startDate > b.startDate ? 1 : -1));
+  return futurePrograms[0] ?? null;
+};
+
+const getExerciseSetCount = (exercise: {
+  reps: string | string[];
+  percent?: number | number[];
+  setWeights?: number[];
+  sets?: number;
+}) => {
+  const repsCount = Array.isArray(exercise.reps) ? exercise.reps.length : 1;
+  const percentCount = Array.isArray(exercise.percent)
+    ? exercise.percent.length
+    : exercise.percent !== undefined
+      ? 1
+      : 0;
+  const setWeightsCount = exercise.setWeights?.length ?? 0;
+  return Math.max(repsCount, percentCount, setWeightsCount, exercise.sets ?? 0, 1);
+};
+
+const getSetValue = (
+  value: number | number[] | string | string[] | undefined,
+  index: number
+) => {
+  if (value === undefined) return undefined;
+  if (Array.isArray(value)) return value[index] ?? value[0];
+  return value;
+};
+
+const getWeekBucketStart = (date: string) => {
+  const parsedDate = parseDateOnly(date);
+  if (!parsedDate) return null;
+  const dayOfWeek = parsedDate.getDay();
+  const diffToMonday = (dayOfWeek + 6) % 7;
+  parsedDate.setDate(parsedDate.getDate() - diffToMonday);
+  return formatDateOnly(parsedDate);
+};
+
+const resolveExerciseVolume = (
+  exercise: {
+    exerciseName: string;
+    reps: string | string[];
+    setWeights?: number[];
+    percent?: number | number[];
+    weights?: number;
+    completed: boolean;
+  },
+  prLookup: Record<string, number>
+) => {
+  if (!exercise.completed) return 0;
+  const setCount = getExerciseSetCount(exercise);
+  let volume = 0;
+  for (let index = 0; index < setCount; index += 1) {
+    const repsValue = Number(getSetValue(exercise.reps, index) ?? 0);
+    if (!Number.isFinite(repsValue) || repsValue <= 0) continue;
+
+    const storedSetWeight = Number(exercise.setWeights?.[index] ?? 0);
+    if (Number.isFinite(storedSetWeight) && storedSetWeight > 0) {
+      volume += storedSetWeight * repsValue;
+      continue;
+    }
+
+    const percentValue = Number(getSetValue(exercise.percent, index) ?? 0);
+    const oneRepMax = prLookup[normalizeExerciseName(exercise.exerciseName)];
+    if (Number.isFinite(percentValue) && percentValue > 0 && oneRepMax) {
+      volume += (percentValue / 100) * oneRepMax * repsValue;
+      continue;
+    }
+
+    if (typeof exercise.weights === "number" && exercise.weights > 0) {
+      volume += exercise.weights * repsValue;
+    }
+  }
+  return volume;
+};
+
+const ensureProgramOwnership = async (
+  ctx: MutationCtx | QueryCtx,
+  programId: Id<"programs">
+) => {
+  const userId = await getUserId(ctx);
+  const program = await ctx.db.get(programId);
+  if (!program) throw new Error("Program not found");
+  if (program.userId !== userId) throw new Error("Unauthorized");
+  return program;
+};
+
+// Get all unique athletes for the current signed-in user
 export const getAthletes = query({
   args: {},
   handler: async (ctx, args) => {
-    // Verify admin authentication
-    await getUserId(ctx);
-
-    // Admin can see all programs regardless of userId
-    const programs = await ctx.db.query("programs").collect();
+    const userId = await getUserId(ctx);
+    const programs = isAdminUser(userId)
+      ? await ctx.db.query("programs").collect()
+      : await ctx.db
+          .query("programs")
+          .withIndex("by_user", (q) => q.eq("userId", userId))
+          .collect();
 
     // Get unique athlete names
     const athleteNames = [...new Set(programs.map((p) => p.athleteName))];
@@ -22,39 +172,47 @@ export const getAthletes = query({
   },
 });
 
-// Get all programs for a specific athlete (admin sees all)
+// Get all programs for a specific athlete for the current signed-in user
 export const getProgramsForAthlete = query({
   args: {
     athleteName: v.string(),
   },
   handler: async (ctx, args) => {
-    // Verify admin authentication
-    await getUserId(ctx);
-
-    // Admin can see all programs for the athlete
-    const programs = await ctx.db
-      .query("programs")
-      .withIndex("by_athlete", (q) => q.eq("athleteName", args.athleteName))
-      .collect();
+    const userId = await getUserId(ctx);
+    const programs = isAdminUser(userId)
+      ? await ctx.db
+          .query("programs")
+          .withIndex("by_athlete", (q) => q.eq("athleteName", args.athleteName))
+          .collect()
+      : await ctx.db
+          .query("programs")
+          .withIndex("by_user_athlete", (q) =>
+            q.eq("userId", userId).eq("athleteName", args.athleteName)
+          )
+          .collect();
 
     return programs;
   },
 });
 
-// Get the most recent program for an athlete (admin sees all)
+// Get the most recent program for an athlete for the current signed-in user
 export const getCurrentProgramForAthlete = query({
   args: {
     athleteName: v.string(),
   },
   handler: async (ctx, args) => {
-    // Verify admin authentication
-    await getUserId(ctx);
-
-    // Admin can see all programs for the athlete
-    const programs = await ctx.db
-      .query("programs")
-      .withIndex("by_athlete", (q) => q.eq("athleteName", args.athleteName))
-      .collect();
+    const userId = await getUserId(ctx);
+    const programs = isAdminUser(userId)
+      ? await ctx.db
+          .query("programs")
+          .withIndex("by_athlete", (q) => q.eq("athleteName", args.athleteName))
+          .collect()
+      : await ctx.db
+          .query("programs")
+          .withIndex("by_user_athlete", (q) =>
+            q.eq("userId", userId).eq("athleteName", args.athleteName)
+          )
+          .collect();
 
     if (programs.length === 0) return null;
 
@@ -63,15 +221,42 @@ export const getCurrentProgramForAthlete = query({
   },
 });
 
-// Coach dashboard summary (admin sees all)
+export const getCurrentProgramForUser = query({
+  args: {
+    athleteName: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const userId = await getUserId(ctx);
+    const programs = args.athleteName
+      ? await ctx.db
+          .query("programs")
+          .withIndex("by_user_athlete", (q) =>
+            q.eq("userId", userId).eq("athleteName", args.athleteName!)
+          )
+          .collect()
+      : await ctx.db
+          .query("programs")
+          .withIndex("by_user", (q) => q.eq("userId", userId))
+          .collect();
+
+    if (programs.length === 0) return null;
+
+    const today = formatDateOnly(new Date());
+    return pickCurrentProgram(programs, today);
+  },
+});
+
+// Coach dashboard summary for current user's athletes
 export const getCoachDashboard = query({
   args: {},
   handler: async (ctx, args) => {
-    // Verify admin authentication
-    await getUserId(ctx);
-
-    // Admin can see all programs
-    const programs = await ctx.db.query("programs").collect();
+    const userId = await getUserId(ctx);
+    const programs = isAdminUser(userId)
+      ? await ctx.db.query("programs").collect()
+      : await ctx.db
+          .query("programs")
+          .withIndex("by_user", (q) => q.eq("userId", userId))
+          .collect();
 
     const byAthlete = new Map<string, typeof programs[number]>();
     for (const program of programs) {
@@ -98,7 +283,7 @@ export const getCoachDashboard = query({
   },
 });
 
-// Get a specific program for the training calendar (admin sees all)
+// Get a specific program for the training calendar for current user
 export const getAthleteProgram = query({
   args: {
     athleteName: v.string(),
@@ -106,40 +291,51 @@ export const getAthleteProgram = query({
     startDate: v.string(),
   },
   handler: async (ctx, args) => {
-    // Verify admin authentication
-    await getUserId(ctx);
-
-    // Admin can see any program by athlete/program/startDate
-    const program = await ctx.db
-      .query("programs")
-      .withIndex("by_athlete_program", (q) =>
-        q
-          .eq("athleteName", args.athleteName)
-          .eq("programName", args.programName)
-          .eq("startDate", args.startDate)
-      )
-      .first();
+    const userId = await getUserId(ctx);
+    const program = isAdminUser(userId)
+      ? await ctx.db
+          .query("programs")
+          .withIndex("by_athlete_program", (q) =>
+            q
+              .eq("athleteName", args.athleteName)
+              .eq("programName", args.programName)
+              .eq("startDate", args.startDate)
+          )
+          .first()
+      : await ctx.db
+          .query("programs")
+          .withIndex("by_user_athlete_program", (q) =>
+            q
+              .eq("userId", userId)
+              .eq("athleteName", args.athleteName)
+              .eq("programName", args.programName)
+              .eq("startDate", args.startDate)
+          )
+          .first();
 
     return program;
   },
 });
 
-// Get flattened workouts for analytics (admin sees all)
+// Get flattened workouts for analytics for current user
 export const getWorkoutsForAnalytics = query({
   args: {
     athleteName: v.string(),
     programName: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    // Verify admin authentication
-    await getUserId(ctx);
-
-    // Admin can see all programs for the athlete
-    let query = ctx.db
-      .query("programs")
-      .withIndex("by_athlete", (q) => q.eq("athleteName", args.athleteName));
-
-    const programs = await query.collect();
+    const userId = await getUserId(ctx);
+    const programs = isAdminUser(userId)
+      ? await ctx.db
+          .query("programs")
+          .withIndex("by_athlete", (q) => q.eq("athleteName", args.athleteName))
+          .collect()
+      : await ctx.db
+          .query("programs")
+          .withIndex("by_user_athlete", (q) =>
+            q.eq("userId", userId).eq("athleteName", args.athleteName)
+          )
+          .collect();
 
     // Filter by program name if provided
     const filteredPrograms = args.programName
@@ -167,20 +363,24 @@ export const getWorkoutsForAnalytics = query({
   },
 });
 
-// Get recent bests (heaviest weight in last 3 months) for an athlete (admin sees all)
+// Get recent bests (heaviest weight in last 3 months) for an athlete
 export const getRecentBestsForAthlete = query({
   args: {
     athleteName: v.string(),
   },
   handler: async (ctx, args) => {
-    // Verify admin authentication
-    await getUserId(ctx);
-
-    // Admin can see all programs for the athlete
-    const programs = await ctx.db
-      .query("programs")
-      .withIndex("by_athlete", (q) => q.eq("athleteName", args.athleteName))
-      .collect();
+    const userId = await getUserId(ctx);
+    const programs = isAdminUser(userId)
+      ? await ctx.db
+          .query("programs")
+          .withIndex("by_athlete", (q) => q.eq("athleteName", args.athleteName))
+          .collect()
+      : await ctx.db
+          .query("programs")
+          .withIndex("by_user_athlete", (q) =>
+            q.eq("userId", userId).eq("athleteName", args.athleteName)
+          )
+          .collect();
 
     const cutoffDate = new Date();
     cutoffDate.setMonth(cutoffDate.getMonth() - 3);
@@ -211,15 +411,17 @@ export const getRecentBestsForAthlete = query({
   },
 });
 
-// Get athlete schedule summaries (last session + days remaining) (admin sees all)
+// Get athlete schedule summaries (last session + days remaining) for current user
 export const getAthleteScheduleSummaries = query({
   args: {},
   handler: async (ctx, args) => {
-    // Verify admin authentication
-    await getUserId(ctx);
-
-    // Admin can see all programs
-    const programs = await ctx.db.query("programs").collect();
+    const userId = await getUserId(ctx);
+    const programs = isAdminUser(userId)
+      ? await ctx.db.query("programs").collect()
+      : await ctx.db
+          .query("programs")
+          .withIndex("by_user", (q) => q.eq("userId", userId))
+          .collect();
 
     // Group by athlete
     const athleteMap = new Map<
@@ -262,6 +464,146 @@ export const getAthleteScheduleSummaries = query({
     });
 
     return Array.from(athleteMap.values());
+  },
+});
+
+export const getAnalyticsForCurrentUser = query({
+  args: {
+    range: v.union(v.literal("4W"), v.literal("8W"), v.literal("12W"), v.literal("All")),
+    athleteName: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const userId = await getUserId(ctx);
+    const programs = args.athleteName
+      ? isAdminUser(userId)
+        ? await ctx.db
+            .query("programs")
+            .withIndex("by_athlete", (q) => q.eq("athleteName", args.athleteName!))
+            .collect()
+        : await ctx.db
+            .query("programs")
+            .withIndex("by_user_athlete", (q) =>
+              q.eq("userId", userId).eq("athleteName", args.athleteName!)
+            )
+            .collect()
+      : await ctx.db
+          .query("programs")
+          .withIndex("by_user", (q) => q.eq("userId", userId))
+          .collect();
+
+    const daysBackMap: Record<"4W" | "8W" | "12W" | "All", number> = {
+      "4W": 28,
+      "8W": 56,
+      "12W": 84,
+      All: Number.POSITIVE_INFINITY,
+    };
+    const dayLimit = daysBackMap[args.range];
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const cutoff = new Date(now);
+    if (Number.isFinite(dayLimit)) {
+      cutoff.setDate(cutoff.getDate() - dayLimit);
+      cutoff.setHours(0, 0, 0, 0);
+    }
+
+    const prs =
+      isAdminUser(userId) && args.athleteName
+        ? (await ctx.db.query("athletePRs").collect()).filter(
+            (pr) => pr.athleteName === args.athleteName
+          )
+        : await ctx.db
+            .query("athletePRs")
+            .withIndex("by_user", (q) => q.eq("userId", userId))
+            .collect();
+    const prLookup: Record<string, number> = {};
+    for (const pr of prs) {
+      const key = normalizeExerciseName(pr.exerciseName);
+      const existing = prLookup[key];
+      if (existing === undefined || pr.weight > existing) {
+        prLookup[key] = pr.weight;
+      }
+    }
+
+    const buckets = new Map<
+      string,
+      {
+        volume: number;
+        completed: number;
+        total: number;
+        intensitySum: number;
+        intensityCount: number;
+        dayRatingSum: number;
+        dayRatingCount: number;
+      }
+    >();
+
+    for (const program of programs) {
+      for (const week of program.weeks) {
+        for (const day of week.days) {
+          const effectiveDate = resolveEffectiveDayDate(day, week.weekNumber, program.startDate);
+          const parsed = parseDateOnly(effectiveDate);
+          if (!parsed) continue;
+          if (parsed > today) continue;
+          if (Number.isFinite(dayLimit) && parsed < cutoff) continue;
+
+          const bucket = getWeekBucketStart(effectiveDate);
+          if (!bucket) continue;
+          const existing =
+            buckets.get(bucket) ??
+            {
+              volume: 0,
+              completed: 0,
+              total: 0,
+              intensitySum: 0,
+              intensityCount: 0,
+              dayRatingSum: 0,
+              dayRatingCount: 0,
+            };
+
+          existing.total += 1;
+          if (day.completed) {
+            existing.completed += 1;
+            for (const exercise of day.exercises) {
+              existing.volume += resolveExerciseVolume(
+                { ...exercise, exerciseName: exercise.exerciseName },
+                prLookup
+              );
+            }
+            if (typeof day.sessionIntensity === "number" && day.sessionIntensity > 0) {
+              existing.intensitySum += day.sessionIntensity;
+              existing.intensityCount += 1;
+            }
+            if (day.rating) {
+              const ratingScore = DAY_RATING_TO_SCORE[day.rating];
+              existing.dayRatingSum += ratingScore;
+              existing.dayRatingCount += 1;
+            }
+          }
+          buckets.set(bucket, existing);
+        }
+      }
+    }
+
+    const points = Array.from(buckets.entries())
+      .sort(([a], [b]) => (a > b ? 1 : -1))
+      .map(([weekStart, value]) => ({
+        weekStart,
+        volume: Math.round(value.volume * 10) / 10,
+        completionRate:
+          value.total > 0 ? Math.round((value.completed / value.total) * 1000) / 10 : 0,
+        sessionIntensity:
+          value.intensityCount > 0
+            ? Math.round((value.intensitySum / value.intensityCount) * 10) / 10
+            : null,
+        dayRating:
+          value.dayRatingCount > 0
+            ? Math.round((value.dayRatingSum / value.dayRatingCount) * 10) / 10
+            : null,
+        completedSessions: value.completed,
+        totalSessions: value.total,
+      }));
+
+    return points;
   },
 });
 
@@ -329,6 +671,7 @@ export const insertProgram = mutation({
               )
             ),
             sessionIntensity: v.optional(v.number()),
+            sessionComments: v.optional(v.string()),
             completedAt: v.optional(v.number()),
             exercises: v.array(
               v.object({
@@ -429,6 +772,7 @@ export const updateProgram = mutation({
               )
             ),
             sessionIntensity: v.optional(v.number()),
+            sessionComments: v.optional(v.string()),
             completedAt: v.optional(v.number()),
             exercises: v.array(
               v.object({
@@ -462,9 +806,7 @@ export const updateProgram = mutation({
     ),
   },
   handler: async (ctx, args) => {
-    await getUserId(ctx);
-    const program = await ctx.db.get(args.programId);
-    if (!program) throw new Error("Program not found");
+    await ensureProgramOwnership(ctx, args.programId);
 
     await ctx.db.patch(args.programId, {
       athleteName: args.athleteName,
@@ -480,7 +822,7 @@ export const updateProgram = mutation({
   },
 });
 
-// Delete a program (admin can delete any)
+// Delete a program for current user
 export const deleteProgram = mutation({
   args: {
     athleteName: v.string(),
@@ -488,14 +830,12 @@ export const deleteProgram = mutation({
     startDate: v.string(),
   },
   handler: async (ctx, args) => {
-    // Verify admin authentication
-    await getUserId(ctx);
-
-    // Admin can delete any program
+    const userId = await getUserId(ctx);
     const program = await ctx.db
       .query("programs")
-      .withIndex("by_athlete_program", (q) =>
+      .withIndex("by_user_athlete_program", (q) =>
         q
+          .eq("userId", userId)
           .eq("athleteName", args.athleteName)
           .eq("programName", args.programName)
           .eq("startDate", args.startDate)
@@ -511,19 +851,18 @@ export const deleteProgram = mutation({
   },
 });
 
-// Delete all data for an athlete (admin can delete any)
+// Delete all data for an athlete for current user
 export const deleteAthleteData = mutation({
   args: {
     athleteName: v.string(),
   },
   handler: async (ctx, args) => {
-    // Verify admin authentication
-    await getUserId(ctx);
-
-    // Admin can delete all programs for any athlete
+    const userId = await getUserId(ctx);
     const programs = await ctx.db
       .query("programs")
-      .withIndex("by_athlete", (q) => q.eq("athleteName", args.athleteName))
+      .withIndex("by_user_athlete", (q) =>
+        q.eq("userId", userId).eq("athleteName", args.athleteName)
+      )
       .collect();
 
     for (const program of programs) {
@@ -542,9 +881,7 @@ export const moveWorkoutDay = mutation({
     targetDate: v.string(),
   },
   handler: async (ctx, args) => {
-    await getUserId(ctx);
-    const program = await ctx.db.get(args.programId);
-    if (!program) throw new Error("Program not found");
+    const program = await ensureProgramOwnership(ctx, args.programId);
 
     let sourceDate = "";
     let targetWeekNumber: number | null = null;
@@ -636,9 +973,7 @@ export const markDayComplete = mutation({
     ),
   },
   handler: async (ctx, args) => {
-    await getUserId(ctx);
-    const program = await ctx.db.get(args.programId);
-    if (!program) throw new Error("Program not found");
+    const program = await ensureProgramOwnership(ctx, args.programId);
 
     const updatedWeeks = program.weeks.map((week) => {
       if (week.weekNumber !== args.weekNumber) return week;
@@ -673,9 +1008,7 @@ export const markExerciseComplete = mutation({
     weight: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    await getUserId(ctx);
-    const program = await ctx.db.get(args.programId);
-    if (!program) throw new Error("Program not found");
+    const program = await ensureProgramOwnership(ctx, args.programId);
 
     const updatedWeeks = program.weeks.map((week) => {
       if (week.weekNumber !== args.weekNumber) return week;
@@ -744,9 +1077,7 @@ export const updateExerciseSets = mutation({
     sets: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    await getUserId(ctx);
-    const program = await ctx.db.get(args.programId);
-    if (!program) throw new Error("Program not found");
+    const program = await ensureProgramOwnership(ctx, args.programId);
 
     const updatedWeeks = program.weeks.map((week) => {
       if (week.weekNumber !== args.weekNumber) return week;
@@ -789,9 +1120,7 @@ export const updateExerciseNotes = mutation({
     notes: v.string(),
   },
   handler: async (ctx, args) => {
-    await getUserId(ctx);
-    const program = await ctx.db.get(args.programId);
-    if (!program) throw new Error("Program not found");
+    const program = await ensureProgramOwnership(ctx, args.programId);
 
     const updatedWeeks = program.weeks.map((week) => {
       if (week.weekNumber !== args.weekNumber) return week;
@@ -830,9 +1159,7 @@ export const updateAthleteComments = mutation({
     comments: v.string(),
   },
   handler: async (ctx, args) => {
-    await getUserId(ctx);
-    const program = await ctx.db.get(args.programId);
-    if (!program) throw new Error("Program not found");
+    const program = await ensureProgramOwnership(ctx, args.programId);
 
     const updatedWeeks = program.weeks.map((week) => {
       if (week.weekNumber !== args.weekNumber) return week;
@@ -876,9 +1203,7 @@ export const updateDayRating = mutation({
     ),
   },
   handler: async (ctx, args) => {
-    await getUserId(ctx);
-    const program = await ctx.db.get(args.programId);
-    if (!program) throw new Error("Program not found");
+    const program = await ensureProgramOwnership(ctx, args.programId);
 
     const updatedWeeks = program.weeks.map((week) => {
       if (week.weekNumber !== args.weekNumber) return week;
@@ -909,9 +1234,7 @@ export const updateDaySessionIntensity = mutation({
     sessionIntensity: v.number(),
   },
   handler: async (ctx, args) => {
-    await getUserId(ctx);
-    const program = await ctx.db.get(args.programId);
-    if (!program) throw new Error("Program not found");
+    const program = await ensureProgramOwnership(ctx, args.programId);
 
     const updatedWeeks = program.weeks.map((week) => {
       if (week.weekNumber !== args.weekNumber) return week;
@@ -933,21 +1256,53 @@ export const updateDaySessionIntensity = mutation({
   },
 });
 
-// Get completed days for history (read-only for mobile) (admin sees all)
+export const updateDaySessionComments = mutation({
+  args: {
+    programId: v.id("programs"),
+    weekNumber: v.number(),
+    dayNumber: v.number(),
+    sessionComments: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const program = await ensureProgramOwnership(ctx, args.programId);
+
+    const updatedWeeks = program.weeks.map((week) => {
+      if (week.weekNumber !== args.weekNumber) return week;
+      return {
+        ...week,
+        days: week.days.map((day) => {
+          if (day.dayNumber !== args.dayNumber) return day;
+          return {
+            ...day,
+            sessionComments: args.sessionComments.trim(),
+          };
+        }),
+      };
+    });
+
+    await ctx.db.patch(args.programId, { weeks: updatedWeeks });
+  },
+});
+
+// Get completed days for current user
 export const getCompletedDays = query({
   args: {
-    athleteName: v.string(),
+    athleteName: v.optional(v.string()),
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    // Verify admin authentication
-    await getUserId(ctx);
-
-    // Admin can see all programs for the athlete
-    const programs = await ctx.db
-      .query("programs")
-      .withIndex("by_athlete", (q) => q.eq("athleteName", args.athleteName))
-      .collect();
+    const userId = await getUserId(ctx);
+    const programs = args.athleteName
+      ? await ctx.db
+          .query("programs")
+          .withIndex("by_user_athlete", (q) =>
+            q.eq("userId", userId).eq("athleteName", args.athleteName!)
+          )
+          .collect()
+      : await ctx.db
+          .query("programs")
+          .withIndex("by_user", (q) => q.eq("userId", userId))
+          .collect();
 
     // Flatten and filter completed days
     const completedDays = programs.flatMap((program) =>

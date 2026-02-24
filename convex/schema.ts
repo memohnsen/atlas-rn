@@ -49,6 +49,7 @@ export default defineSchema({
               )
             ),
             sessionIntensity: v.optional(v.number()),
+            sessionComments: v.optional(v.string()),
             completedAt: v.optional(v.number()), // timestamp
 
             // Exercises for this day

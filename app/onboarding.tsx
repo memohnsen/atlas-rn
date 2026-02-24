@@ -8,6 +8,7 @@ import { format } from 'date-fns'
 import * as Haptics from 'expo-haptics'
 import { useRouter } from 'expo-router'
 import { Stack } from 'expo-router/stack'
+import { useUser } from '@clerk/clerk-expo'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   Dimensions,
@@ -21,6 +22,7 @@ import {
   type ViewToken,
 } from 'react-native'
 import Animated, { FadeIn, FadeInDown, FadeInUp } from 'react-native-reanimated'
+import { resolveAthleteNameFromUser } from '@/utils/athleteName'
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window')
 
@@ -60,10 +62,12 @@ const TOTAL_STEPS = 4
 
 export default function OnboardingScreen() {
   const router = useRouter()
+  const { user } = useUser()
   const { completeOnboarding } = useOnboarding()
   const { weightUnit, setWeightUnit } = useUnit()
   const upsertMeet = useMutation(api.athleteMeets.upsertMeet)
   const bulkUpsertPRs = useMutation(api.athletePRs.bulkUpsertPRs)
+  const athleteName = resolveAthleteNameFromUser(user)
 
   const [step, setStep] = useState(0)
   const flatListRef = useRef<FlatList>(null)
@@ -117,7 +121,7 @@ export default function OnboardingScreen() {
     // Save meet if name provided
     if (meetName.trim()) {
       await upsertMeet({
-        athleteName: 'maddisen',
+        athleteName,
         meetName: meetName.trim(),
         meetDate: format(meetDate, 'yyyy-MM-dd'),
       })
@@ -139,7 +143,7 @@ export default function OnboardingScreen() {
 
     if (prsToSave.length > 0) {
       await bulkUpsertPRs({
-        athleteName: 'maddisen',
+        athleteName,
         prs: prsToSave,
       })
     }

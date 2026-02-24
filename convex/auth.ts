@@ -7,12 +7,5 @@ export async function getUserId(ctx: Ctx) {
   if (!identity) {
     throw new Error("Unauthenticated");
   }
-  const adminUserId = process.env.ADMIN_CLERK_USER_ID;
-  if (!adminUserId) {
-    throw new Error("ADMIN_CLERK_USER_ID environment variable is not set");
-  }
-  if (identity.subject !== adminUserId) {
-    throw new Error("Unauthorized");
-  }
   return identity.subject;
 }

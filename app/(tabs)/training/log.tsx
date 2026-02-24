@@ -11,6 +11,7 @@ import {
   groupExercisesBySuperset,
 } from '@/utils/programUtils'
 import { useMutation, useQuery } from 'convex/react'
+import { FunctionReference } from 'convex/server'
 import { useAuth } from '@clerk/clerk-expo'
 import { format, parse } from 'date-fns'
 import * as Haptics from 'expo-haptics'
@@ -53,6 +54,7 @@ const READINESS_OPTIONS: {
 ]
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable)
+const getCurrentProgramForUser = "programs:getCurrentProgramForUser" as unknown as FunctionReference<"query">
 
 type SetStatus = 'pending' | 'complete' | 'miss'
 
@@ -92,14 +94,8 @@ const TrainingLog = () => {
   )
 
   const programData = useQuery(
-    api.programs.getAthleteProgram,
-    !coachEnabled && isSignedIn
-      ? {
-          athleteName: 'maddisen',
-          programName: 'test',
-          startDate: '2026-02-01',
-        }
-      : 'skip'
+    getCurrentProgramForUser,
+    !coachEnabled && isSignedIn ? {} : 'skip'
   )
 
   const program = (coachEnabled ? coachProgram : programData) as (Program & {
@@ -113,8 +109,8 @@ const TrainingLog = () => {
   const updateExerciseNotes = useMutation(api.programs.updateExerciseNotes)
   const prs = useQuery(
     api.athletePRs.getAthletePRs,
-    isSignedIn
-      ? { athleteName: coachEnabled ? (selectedAthlete ?? 'maddisen') : (program?.athleteName ?? 'maddisen') }
+    isSignedIn && (coachEnabled ? selectedAthlete : program?.athleteName)
+      ? { athleteName: coachEnabled ? selectedAthlete! : program!.athleteName }
       : 'skip'
   )
 
@@ -162,13 +158,13 @@ const TrainingLog = () => {
   }
 
   const activeReadiness = readiness ?? currentDay.rating ?? 'Average'
-  const sessionDayLabel = useMemo(() => {
+  const sessionDayLabel = (() => {
     const resolvedDate = resolveProgramDayDate(program, currentDay, weekNumber)
     if (!resolvedDate) return currentDay.dayLabel
     const [year, month, day] = resolvedDate.split('-').map(Number)
     if (!year || !month || !day) return currentDay.dayLabel
     return format(new Date(year, month - 1, day), 'EEEE')
-  }, [currentDay, program, weekNumber])
+  })()
 
   // ─── Handlers ──────────────────────────────────────────
 
@@ -243,9 +239,7 @@ const TrainingLog = () => {
 
   // ─── Data prep ─────────────────────────────────────────
 
-  const supersetPages = useMemo(() => {
-    return groupExercisesBySuperset(currentDay.exercises)
-  }, [currentDay.exercises])
+  const supersetPages = groupExercisesBySuperset(currentDay.exercises)
 
   const pages = coachEnabled
     ? supersetPages.map((page) => ({
@@ -267,7 +261,7 @@ const TrainingLog = () => {
 
   const totalExercises = currentDay.exercises.length
   const completedExercises = currentDay.exercises.filter((e) => e.completed).length
-  const isFirstWorkoutCompletion = useMemo(() => {
+  const isFirstWorkoutCompletion = (() => {
     if (currentDay.completed) return false
     let completedCount = 0
     for (const week of program.weeks) {
@@ -279,7 +273,7 @@ const TrainingLog = () => {
       }
     }
     return completedCount === 0
-  }, [currentDay.completed, dayNumber, program.weeks, weekNumber])
+  })()
 
   const toDisplayWeight = (value: number | undefined) => {
     if (typeof value !== 'number') return ''

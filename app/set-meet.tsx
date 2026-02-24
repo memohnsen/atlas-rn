@@ -3,7 +3,7 @@ import DateTimePicker, { DateTimePickerAndroid } from '@react-native-community/d
 import { useMutation, useQuery } from 'convex/react'
 import { format } from 'date-fns'
 import { useRouter } from 'expo-router'
-import { useAuth } from '@clerk/clerk-expo'
+import { useAuth, useUser } from '@clerk/clerk-expo'
 import { useCallback, useEffect, useState } from 'react'
 import {
   Alert,
@@ -15,13 +15,16 @@ import {
   TextInput,
   View,
 } from 'react-native'
+import { resolveAthleteNameFromUser } from '@/utils/athleteName'
 
 export default function SetMeetScreen() {
   const router = useRouter()
   const { isSignedIn } = useAuth()
+  const { user } = useUser()
+  const athleteName = resolveAthleteNameFromUser(user)
   const existingMeet = useQuery(
     api.athleteMeets.getNextMeet,
-    isSignedIn ? { athleteName: 'maddisen' } : 'skip'
+    isSignedIn ? { athleteName } : 'skip'
   )
   const upsertMeet = useMutation(api.athleteMeets.upsertMeet)
   const deleteMeet = useMutation(api.athleteMeets.deleteMeet)
@@ -59,7 +62,7 @@ export default function SetMeetScreen() {
     }
 
     await upsertMeet({
-      athleteName: 'maddisen',
+      athleteName,
       meetName: trimmedName,
       meetDate: format(meetDate, 'yyyy-MM-dd'),
     })
@@ -74,7 +77,7 @@ export default function SetMeetScreen() {
         text: 'Remove',
         style: 'destructive',
         onPress: async () => {
-          await deleteMeet({ athleteName: 'maddisen' })
+          await deleteMeet({ athleteName })
           router.back()
         },
       },

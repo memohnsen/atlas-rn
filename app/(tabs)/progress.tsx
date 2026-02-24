@@ -4,9 +4,11 @@ import Header from '@/components/Header'
 import ProgressCard from '@/components/ProgressCard'
 import { useUnit } from '@/components/UnitProvider'
 import { api } from '@/convex/_generated/api'
+import { Program } from '@/types/program'
 import { GroupedPRs, LiftName } from '@/types/prs'
 import { useAuth } from '@clerk/clerk-expo'
 import { useMutation, useQuery } from 'convex/react'
+import { FunctionReference } from 'convex/server'
 import { Chip } from 'heroui-native'
 import { useState } from 'react'
 import { FlatList, Modal, Pressable, Text, TextInput, View } from 'react-native'
@@ -40,6 +42,8 @@ const LIFT_CARDS: { label: Lifts; value: LiftName; category: LiftCategory }[] = 
 const normalizeExerciseName = (value: string) =>
   value.toLowerCase().trim().replace(/\s+/g, " ");
 
+const getCurrentProgramForUser = "programs:getCurrentProgramForUser" as unknown as FunctionReference<"query">
+
 const Progress = () => {
   const [chipSelected, setChipSelected] = useState("all")
   const { isSignedIn } = useAuth()
@@ -51,18 +55,22 @@ const Progress = () => {
   const [editLift, setEditLift] = useState<{ label: string; value: LiftName } | null>(null)
   const upsertPR = useMutation(api.athletePRs.upsertPR)
 
-  const athleteName = coachEnabled ? (selectedAthlete ?? 'maddisen') : 'maddisen'
+  const currentProgram = useQuery(
+    getCurrentProgramForUser,
+    isSignedIn && !coachEnabled ? {} : 'skip'
+  ) as Program | null | undefined
+  const athleteName = coachEnabled ? (selectedAthlete ?? currentProgram?.athleteName) : currentProgram?.athleteName
 
   const prData = useQuery(
     api.athletePRs.getAthletePRs,
-    isSignedIn
+    isSignedIn && athleteName
       ? { athleteName }
       : 'skip'
   )
 
   const recentBests = useQuery(
     api.programs.getRecentBestsForAthlete,
-    isSignedIn
+    isSignedIn && athleteName
       ? { athleteName }
       : 'skip'
   )
@@ -106,7 +114,7 @@ const Progress = () => {
   }
 
   const handleSaveEdit = async () => {
-    if (!editLift) return
+    if (!editLift || !athleteName) return
     const parsed = Number(editValue)
     if (!Number.isFinite(parsed) || parsed <= 0) return
 
@@ -214,22 +222,16 @@ const Progress = () => {
           </View>
         }
         renderItem={({ item: { label, value } }) =>
-          prData ? (
-            <View className='px-5'>
-              <ProgressCard
-                exerciseName={label}
-                recentBest={getRecentBest(recentBests, label)}
-                pr={getOneRm(prData, value)}
-                unit={weightUnit}
-                canEdit={canEditPRs}
-                onEdit={() => handleEditPress(label, value)}
-              />
-            </View>
-          ) : (
-            <View className='px-5'>
-              <ProgressCard exerciseName="No PRs Found" recentBest={0} pr={0} unit={weightUnit} />
-            </View>
-          )
+          <View className='px-5'>
+            <ProgressCard
+              exerciseName={label}
+              recentBest={getRecentBest(recentBests, label)}
+              pr={getOneRm(prData, value)}
+              unit={weightUnit}
+              canEdit={canEditPRs}
+              onEdit={() => handleEditPress(label, value)}
+            />
+          </View>
         }
       />
     </View>

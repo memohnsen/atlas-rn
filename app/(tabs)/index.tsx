@@ -3,10 +3,12 @@ import Header from '@/components/Header'
 import LiquidGlassButton from '@/components/LiquidGlassButton'
 import { api } from '@/convex/_generated/api'
 import { Program } from '@/types/program'
+import { resolveAthleteNameFromUser } from '@/utils/athleteName'
 import { getTrainingDayByDate } from '@/utils/programUtils'
-import { useAuth } from '@clerk/clerk-expo'
+import { useAuth, useUser } from '@clerk/clerk-expo'
 import Ionicons from '@expo/vector-icons/Ionicons'
 import { useQuery } from 'convex/react'
+import { FunctionReference } from 'convex/server'
 import { differenceInDays, format } from 'date-fns'
 import { useRouter } from 'expo-router'
 import { Card, Divider } from 'heroui-native'
@@ -21,10 +23,13 @@ const toTitleCase = (value: string) =>
     .map((word) => (word ? word[0].toUpperCase() + word.slice(1) : ''))
     .join(' ')
 
+const getCurrentProgramForUser = "programs:getCurrentProgramForUser" as unknown as FunctionReference<"query">
+
 export default function HomeScreen() {
   const router = useRouter()
   const { isSignedIn } = useAuth()
-  const { coachEnabled } = useCoach()
+  const { user } = useUser()
+  const { coachEnabled, selectedAthlete } = useCoach()
 
   // Queries
   const coachDashboard = useQuery(
@@ -32,30 +37,27 @@ export default function HomeScreen() {
     coachEnabled && isSignedIn ? {} : 'skip'
   )
 
-  const nextMeet = useQuery(
-    api.athleteMeets.getNextMeet,
-    isSignedIn ? { athleteName: 'maddisen' } : 'skip'
-  )
-
-  const prData = useQuery(
-    api.athletePRs.getAthletePRs,
-    isSignedIn ? { athleteName: 'maddisen' } : 'skip'
-  )
-
   const programData = useQuery(
-    api.programs.getAthleteProgram,
+    getCurrentProgramForUser,
     isSignedIn
       ? {
-          athleteName: 'maddisen',
-          programName: 'test',
-          startDate: '2026-02-01',
+          athleteName: coachEnabled ? selectedAthlete ?? undefined : undefined,
         }
       : 'skip'
   )
 
+  const athleteName = coachEnabled
+    ? selectedAthlete ?? programData?.athleteName
+    : programData?.athleteName ?? resolveAthleteNameFromUser(user)
+
+  const nextMeet = useQuery(
+    api.athleteMeets.getNextMeet,
+    isSignedIn && athleteName ? { athleteName } : 'skip'
+  )
+
   const completedDays = useQuery(
     api.programs.getCompletedDays,
-    isSignedIn ? { athleteName: 'maddisen', limit: 30 } : 'skip'
+    isSignedIn ? { limit: 30 } : 'skip'
   )
 
   const program = programData as Program | undefined
@@ -228,7 +230,7 @@ export default function HomeScreen() {
               <Card.Body>
                 <View className="flex-row justify-between items-center mb-3">
                   <Text className="text-text-title text-lg font-bold">
-                    Today's Training
+                    Today Training
                   </Text>
                   <Text className="text-blue-energy text-sm font-medium">
                     View

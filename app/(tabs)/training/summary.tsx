@@ -10,12 +10,13 @@ import {
   resolveProgramDayDate,
 } from "@/utils/programUtils";
 import { useAuth } from "@clerk/clerk-expo";
-import { useQuery } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
+import { FunctionReference } from "convex/server";
 import { format, parse } from "date-fns";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import * as Sharing from "expo-sharing";
 import { SymbolView } from "expo-symbols";
-import { useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
   Platform,
@@ -23,6 +24,7 @@ import {
   ScrollView,
   Share,
   Text,
+  TextInput,
   useColorScheme,
   View,
 } from "react-native";
@@ -150,24 +152,27 @@ const TrainingSummary = () => {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === "dark";
   const shareRef = useRef<ViewShot>(null);
+  const [sessionComments, setSessionComments] = useState("");
+  const [isSavingComments, setIsSavingComments] = useState(false);
+  const getCurrentProgramForUser =
+    "programs:getCurrentProgramForUser" as unknown as FunctionReference<"query">;
+  const updateDaySessionCommentsRef =
+    "programs:updateDaySessionComments" as unknown as FunctionReference<"mutation">;
 
   const programData = useQuery(
-    api.programs.getAthleteProgram,
-    !coachEnabled && isSignedIn
-      ? {
-          athleteName: "maddisen",
-          programName: "test",
-          startDate: "2026-02-01",
-        }
-      : "skip",
+    getCurrentProgramForUser,
+    !coachEnabled && isSignedIn ? {} : "skip",
   );
+  const updateDaySessionComments = useMutation(updateDaySessionCommentsRef);
 
   const program = programData as
     | (Program & { _id: Id<"programs"> })
     | undefined;
   const prs = useQuery(
     api.athletePRs.getAthletePRs,
-    isSignedIn ? { athleteName: program?.athleteName ?? "maddisen" } : "skip",
+    isSignedIn && program?.athleteName
+      ? { athleteName: program.athleteName }
+      : "skip",
   );
 
   const parsedDate = date ? parse(date, "yyyy-MM-dd", new Date()) : null;
@@ -179,6 +184,9 @@ const TrainingSummary = () => {
   const activeIntensity = intensity
     ? Number(intensity)
     : (currentDay?.sessionIntensity ?? null);
+  useEffect(() => {
+    setSessionComments(currentDay?.sessionComments ?? "");
+  }, [currentDay?.sessionComments, weekNumber, currentDay?.dayNumber]);
   const sessionDayLabel = useMemo(() => {
     if (!program || !currentDay) return undefined;
     const resolvedDate = resolveProgramDayDate(program, currentDay, weekNumber);
@@ -341,11 +349,28 @@ const TrainingSummary = () => {
       }
 
       await Share.share({ url: uri, message: "Workout summary" });
-    } catch (error) {
+    } catch {
       Alert.alert(
         "Share failed",
         "Could not generate the share image. Please try again.",
       );
+    }
+  };
+
+  const handleSaveSessionComments = async () => {
+    if (!program || !currentDay) return;
+    try {
+      setIsSavingComments(true);
+      await updateDaySessionComments({
+        programId: program._id,
+        weekNumber,
+        dayNumber: currentDay.dayNumber,
+        sessionComments,
+      });
+    } catch {
+      Alert.alert("Save failed", "Could not save comments. Please try again.");
+    } finally {
+      setIsSavingComments(false);
     }
   };
 
@@ -651,6 +676,61 @@ const TrainingSummary = () => {
             >
               {averageIntensityLabel}
             </Text>
+          </View>
+
+          <View
+            style={{
+              backgroundColor: colors.card,
+              borderRadius: 18,
+              borderCurve: "continuous",
+              padding: 16,
+              gap: 10,
+            }}
+          >
+            <Text
+              style={{
+                color: colors.textSecondary,
+                fontSize: 12,
+                fontWeight: "700",
+                textTransform: "uppercase",
+              }}
+            >
+              Session Comments
+            </Text>
+            <TextInput
+              value={sessionComments}
+              onChangeText={setSessionComments}
+              placeholder="How did today feel?"
+              placeholderTextColor={colors.textTertiary}
+              multiline
+              style={{
+                color: colors.text,
+                minHeight: 90,
+                borderRadius: 12,
+                borderCurve: "continuous",
+                backgroundColor: colors.cardSecondary,
+                paddingHorizontal: 12,
+                paddingVertical: 10,
+                textAlignVertical: "top",
+              }}
+            />
+            <Pressable
+              onPress={handleSaveSessionComments}
+              disabled={isSavingComments}
+              style={{
+                borderRadius: 12,
+                borderCurve: "continuous",
+                backgroundColor: colors.accent,
+                alignItems: "center",
+                justifyContent: "center",
+                paddingVertical: 12,
+                opacity: isSavingComments ? 0.7 : 1,
+              }}
+            >
+              <Text style={{ color: "#FFFFFF", fontSize: 15, fontWeight: "700" }}>
+                {isSavingComments ? "Saving..." : "Save Session Comments"}
+              </Text>
+            </Pressable>
           </View>
 
           <View

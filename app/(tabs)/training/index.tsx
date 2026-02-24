@@ -6,8 +6,11 @@ import { api } from '@/convex/_generated/api'
 import { Program } from '@/types/program'
 import { useAuth } from '@clerk/clerk-expo'
 import { useQuery } from 'convex/react'
+import { FunctionReference } from 'convex/server'
 import { useState } from 'react'
 import { Pressable, StyleSheet, View } from 'react-native'
+
+const getCurrentProgramForUser = "programs:getCurrentProgramForUser" as unknown as FunctionReference<"query">
 
 const TrainingCalendar = () => {
   // State
@@ -24,14 +27,8 @@ const TrainingCalendar = () => {
   )
 
   const programData = useQuery(
-    api.programs.getAthleteProgram,
-    !coachEnabled && isSignedIn
-      ? {
-          athleteName: 'maddisen',
-          programName: 'test',
-          startDate: '2026-02-01',
-        }
-      : 'skip'
+    getCurrentProgramForUser,
+    !coachEnabled && isSignedIn ? {} : 'skip'
   )
 
   const program = (coachEnabled ? coachProgram : programData) as Program | undefined

@@ -72,6 +72,19 @@ const SettingsScreen = () => {
         </View>
       )}
 
+      {__DEV__ && (
+        <View className="mt-6 px-5">
+          <View className="rounded-2xl bg-card-background px-4 py-3.5">
+            <Text className="text-xs uppercase tracking-wider text-gray-500">
+              Clerk User ID (DEV)
+            </Text>
+            <Text className="mt-1 text-sm font-semibold text-text-title">
+              {user?.id ?? "Unavailable"}
+            </Text>
+          </View>
+        </View>
+      )}
+
       <View className="mt-10 px-5">
         <Pressable
           onPress={async () => {
