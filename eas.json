@@ -9,16 +9,23 @@
       "distribution": "internal",
       "channel": "development",
       "env": {
-        "APP_VARIANT": "development"
+        "APP_VARIANT": "development",
+        "EXPO_USE_COMMUNITY_AUTOLINKING": "1"
       }
     },
     "preview": {
       "distribution": "internal",
-      "channel": "preview"
+      "channel": "preview",
+      "env": {
+        "EXPO_USE_COMMUNITY_AUTOLINKING": "1"
+      }
     },
     "production": {
       "autoIncrement": true,
-      "channel": "production"
+      "channel": "production",
+      "env": {
+        "EXPO_USE_COMMUNITY_AUTOLINKING": "1"
+      }
     }
   },
   "submit": {

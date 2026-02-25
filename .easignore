@@ -1,24 +1,39 @@
-/website
-/website/
-/website/**
+# Monorepo web app is not needed for mobile EAS builds
+website/
 
 # dependencies
 node_modules/
+**/node_modules/
 
-# Expo / build artifacts
+# Expo / Metro / build artifacts
 .expo/
+.expo-shared/
 dist/
 web-build/
+.next/
+coverage/
+*.tsbuildinfo
 
-# VCS / editor / caches
+# Native generated artifacts (large)
+android/.gradle/
+android/build/
+android/app/build/
+android/app/.cxx/
+ios/Pods/
+ios/build/
+
+# VCS / editor / OS
 .git/
 .DS_Store
+.vscode/
 
 # logs
 logs/
+*.log
 npm-debug.*
 yarn-debug.*
 yarn-error.*
+bun-debug.*
 
 # local env files
 .env
