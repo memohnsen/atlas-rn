@@ -6,7 +6,8 @@ import { useUnit } from '@/components/UnitProvider'
 import { api } from '@/convex/_generated/api'
 import { Program } from '@/types/program'
 import { GroupedPRs, LiftName } from '@/types/prs'
-import { useAuth } from '@clerk/clerk-expo'
+import { resolveAthleteNameFromUser } from '@/utils/athleteName'
+import { useAuth, useUser } from '@clerk/clerk-expo'
 import { useMutation, useQuery } from 'convex/react'
 import { FunctionReference } from 'convex/server'
 import { Chip } from 'heroui-native'
@@ -42,11 +43,18 @@ const LIFT_CARDS: { label: Lifts; value: LiftName; category: LiftCategory }[] = 
 const normalizeExerciseName = (value: string) =>
   value.toLowerCase().trim().replace(/\s+/g, " ");
 
+const parseWeightInput = (value: string): number => {
+  const normalized = value.trim().replace(',', '.')
+  const parsed = Number(normalized)
+  return Number.isFinite(parsed) ? parsed : NaN
+}
+
 const getCurrentProgramForUser = "programs:getCurrentProgramForUser" as unknown as FunctionReference<"query">
 
 const Progress = () => {
   const [chipSelected, setChipSelected] = useState("all")
   const { isSignedIn } = useAuth()
+  const { user } = useUser()
   const { coachEnabled, selectedAthlete, setSelectedAthlete, athletes } = useCoach()
   const { weightUnit } = useUnit()
   const [pickerOpen, setPickerOpen] = useState(false)
@@ -59,7 +67,9 @@ const Progress = () => {
     getCurrentProgramForUser,
     isSignedIn && !coachEnabled ? {} : 'skip'
   ) as Program | null | undefined
-  const athleteName = coachEnabled ? (selectedAthlete ?? currentProgram?.athleteName) : currentProgram?.athleteName
+  const athleteName = coachEnabled
+    ? (selectedAthlete ?? currentProgram?.athleteName)
+    : (currentProgram?.athleteName ?? resolveAthleteNameFromUser(user))
 
   const prData = useQuery(
     api.athletePRs.getAthletePRs,
@@ -115,7 +125,7 @@ const Progress = () => {
 
   const handleSaveEdit = async () => {
     if (!editLift || !athleteName) return
-    const parsed = Number(editValue)
+    const parsed = parseWeightInput(editValue)
     if (!Number.isFinite(parsed) || parsed <= 0) return
 
     const storedWeight = weightUnit === 'lb' ? parsed / 2.2 : parsed
@@ -131,6 +141,9 @@ const Progress = () => {
     setEditOpen(false)
   }
 
+  const parsedEditValue = parseWeightInput(editValue)
+  const canSaveEdit = Number.isFinite(parsedEditValue) && parsedEditValue > 0
+
   return (
     <View className='flex-1 bg-background'>
       <AthletePickerModal
@@ -141,14 +154,9 @@ const Progress = () => {
         onClose={() => setPickerOpen(false)}
       />
       <Modal visible={editOpen} transparent animationType="fade" onRequestClose={() => setEditOpen(false)}>
-        <Pressable
-          className="flex-1 bg-black/50 justify-center px-6"
-          onPress={() => setEditOpen(false)}
-        >
-          <Pressable
-            className="rounded-2xl bg-card-background p-5"
-            onPress={(event) => event.stopPropagation()}
-          >
+        <View className="flex-1 justify-center px-6">
+          <Pressable className="absolute inset-0 bg-black/50" onPress={() => setEditOpen(false)} />
+          <View className="rounded-2xl bg-card-background p-5">
             <Text className="text-text-title text-lg font-semibold mb-4">
               {editLift ? `Edit ${editLift.label} PR` : 'Edit PR'}
             </Text>
@@ -174,15 +182,15 @@ const Progress = () => {
               </Pressable>
               <Pressable
                 onPress={handleSaveEdit}
-                disabled={!editValue.trim() || Number(editValue) <= 0}
+                disabled={!canSaveEdit}
                 className="rounded-xl px-4 py-3"
-                style={{ backgroundColor: '#5386E4' }}
+                style={{ backgroundColor: canSaveEdit ? '#5386E4' : '#9CA3AF' }}
               >
                 <Text className="text-white text-base font-medium">Save</Text>
               </Pressable>
             </View>
-          </Pressable>
-        </Pressable>
+          </View>
+        </View>
       </Modal>
       <FlatList
         data={filteredCards}
