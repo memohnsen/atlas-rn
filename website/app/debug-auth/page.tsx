@@ -1,7 +1,7 @@
 import { auth } from '@clerk/nextjs/server'
 
-export default function DebugAuthPage() {
-  const { userId, sessionId } = auth()
+export default async function DebugAuthPage() {
+  const { userId, sessionId } = await auth()
   const adminUserId = process.env.ADMIN_CLERK_USER_ID || '(missing)'
   return (
     <main style={{
