@@ -1,95 +1,98 @@
-import { useCoach } from '@/components/CoachProvider'
-import Header from '@/components/Header'
-import LiquidGlassButton from '@/components/LiquidGlassButton'
-import { api } from '@/convex/_generated/api'
-import { Program } from '@/types/program'
-import { resolveAthleteNameFromUser } from '@/utils/athleteName'
-import { getTrainingDayByDate } from '@/utils/programUtils'
-import { useAuth, useUser } from '@clerk/clerk-expo'
-import Ionicons from '@expo/vector-icons/Ionicons'
-import { useQuery } from 'convex/react'
-import { FunctionReference } from 'convex/server'
-import { differenceInDays, format } from 'date-fns'
-import { useRouter } from 'expo-router'
-import { Card, Divider } from 'heroui-native'
-import { useMemo } from 'react'
-import { Platform, Pressable, ScrollView, Text, View } from 'react-native'
-import Animated, { FadeInDown } from 'react-native-reanimated'
+import { useCoach } from "@/components/CoachProvider";
+import Header from "@/components/Header";
+import LiquidGlassButton from "@/components/LiquidGlassButton";
+import { api } from "@/convex/_generated/api";
+import { Program } from "@/types/program";
+import { resolveAthleteNameFromUser } from "@/utils/athleteName";
+import { getTrainingDayByDate } from "@/utils/programUtils";
+import { useAuth, useUser } from "@clerk/clerk-expo";
+import Ionicons from "@expo/vector-icons/Ionicons";
+import { useQuery } from "convex/react";
+import { FunctionReference } from "convex/server";
+import { differenceInDays, format } from "date-fns";
+import { useRouter } from "expo-router";
+import { Card, Divider } from "heroui-native";
+import { useMemo } from "react";
+import { Platform, Pressable, ScrollView, Text, View } from "react-native";
+import Animated, { FadeInDown } from "react-native-reanimated";
 
 const toTitleCase = (value: string) =>
   value
     .trim()
-    .split(' ')
-    .map((word) => (word ? word[0].toUpperCase() + word.slice(1) : ''))
-    .join(' ')
+    .split(" ")
+    .map((word) => (word ? word[0].toUpperCase() + word.slice(1) : ""))
+    .join(" ");
 
-const getCurrentProgramForUser = "programs:getCurrentProgramForUser" as unknown as FunctionReference<"query">
+const getCurrentProgramForUser =
+  "programs:getCurrentProgramForUser" as unknown as FunctionReference<"query">;
 
 export default function HomeScreen() {
-  const router = useRouter()
-  const { isSignedIn } = useAuth()
-  const { user } = useUser()
-  const { coachEnabled, selectedAthlete } = useCoach()
+  const router = useRouter();
+  const { isSignedIn } = useAuth();
+  const { user } = useUser();
+  const { coachEnabled, selectedAthlete } = useCoach();
 
   // Queries
   const coachDashboard = useQuery(
     api.programs.getCoachDashboard,
-    coachEnabled && isSignedIn ? {} : 'skip'
-  )
+    coachEnabled && isSignedIn ? {} : "skip",
+  );
 
   const programData = useQuery(
     getCurrentProgramForUser,
     isSignedIn
       ? {
-          athleteName: coachEnabled ? selectedAthlete ?? undefined : undefined,
+          athleteName: coachEnabled
+            ? (selectedAthlete ?? undefined)
+            : undefined,
         }
-      : 'skip'
-  )
+      : "skip",
+  );
 
   const athleteName = coachEnabled
-    ? selectedAthlete ?? programData?.athleteName
-    : programData?.athleteName ?? resolveAthleteNameFromUser(user)
+    ? (selectedAthlete ?? programData?.athleteName)
+    : (programData?.athleteName ?? resolveAthleteNameFromUser(user));
 
   const nextMeet = useQuery(
     api.athleteMeets.getNextMeet,
-    isSignedIn && athleteName ? { athleteName } : 'skip'
-  )
+    isSignedIn && athleteName ? { athleteName } : "skip",
+  );
 
   const completedDays = useQuery(
     api.programs.getCompletedDays,
-    isSignedIn ? { limit: 30 } : 'skip'
-  )
+    isSignedIn ? { limit: 30 } : "skip",
+  );
 
-  const program = programData as Program | undefined
+  const program = programData as Program | undefined;
 
   // Derived data
-  const today = new Date()
+  const today = new Date();
 
   const daysUntilMeet = useMemo(() => {
-    if (!nextMeet) return null
-    const meetDate = new Date(nextMeet.meetDate + 'T00:00:00')
-    return differenceInDays(meetDate, today)
-  }, [nextMeet])
+    if (!nextMeet) return null;
+    const meetDate = new Date(nextMeet.meetDate + "T00:00:00");
+    return differenceInDays(meetDate, today);
+  }, [nextMeet]);
 
   const todayTraining = useMemo(() => {
-    if (!program) return null
-    return getTrainingDayByDate(program, today)
-  }, [program])
+    if (!program) return null;
+    return getTrainingDayByDate(program, today);
+  }, [program]);
 
   const trainingStreak = useMemo(() => {
-    if (!completedDays || completedDays.length === 0) return 0
-    let streak = 0
-    const now = Date.now()
-    const oneWeekAgo = now - 7 * 24 * 60 * 60 * 1000
+    if (!completedDays || completedDays.length === 0) return 0;
+    let streak = 0;
+    const now = Date.now();
+    const oneWeekAgo = now - 7 * 24 * 60 * 60 * 1000;
     for (const day of completedDays) {
       if (day.completedAt && day.completedAt >= oneWeekAgo) {
-        streak++
+        streak++;
       }
     }
-    return streak
-  }, [completedDays])
+    return streak;
+  }, [completedDays]);
 
-  const totalCompleted = completedDays?.length ?? 0
+  const totalCompleted = completedDays?.length ?? 0;
 
   if (coachEnabled) {
     return (
@@ -98,24 +101,27 @@ export default function HomeScreen() {
         contentContainerStyle={{ paddingBottom: 40 }}
         contentInsetAdjustmentBehavior="automatic"
       >
-        {Platform.OS === 'android' && <View className="h-20" />}
+        {Platform.OS === "android" && <View className="h-20" />}
         <View className="px-5 pt-4">
           <View className="flex-row items-start justify-between">
             <View>
-              <Header title="Coach Mode" subtitle={format(new Date(), 'EEEE, MMMM d')} />
+              <Header
+                title="Coach Mode"
+                subtitle={format(new Date(), "EEEE, MMMM d")}
+              />
             </View>
             <View className="pt-1">
-              {Platform.OS === 'ios' ? (
+              {Platform.OS === "ios" ? (
                 <LiquidGlassButton
                   icon="settings-outline"
                   iconSize={24}
                   height={44}
                   width={44}
                   iconColor="#6C6C70"
-                  onPress={() => router.push('/settings')}
+                  onPress={() => router.push("/settings")}
                 />
               ) : (
-                <Pressable onPress={() => router.push('/settings')}>
+                <Pressable onPress={() => router.push("/settings")}>
                   <Ionicons name="settings-outline" size={24} color="#6C6C70" />
                 </Pressable>
               )}
@@ -124,7 +130,10 @@ export default function HomeScreen() {
 
           <View className="mt-6" style={{ gap: 12 }}>
             {coachDashboard?.map((summary) => (
-              <Card key={`${summary.athleteName}-${summary.startDate}`} className="bg-card-background">
+              <Card
+                key={`${summary.athleteName}-${summary.startDate}`}
+                className="bg-card-background"
+              >
                 <Card.Body>
                   <Text className="text-text-title text-xl font-bold mt-1">
                     {toTitleCase(summary.athleteName)}
@@ -134,7 +143,11 @@ export default function HomeScreen() {
                   </Text>
                   <View className="flex-row mt-2" style={{ gap: 16 }}>
                     <Text className="text-gray-500 text-sm">
-                      Starts {format(new Date(summary.startDate + 'T00:00:00'), 'MMM d, yyyy')}
+                      Starts{" "}
+                      {format(
+                        new Date(summary.startDate + "T00:00:00"),
+                        "MMM d, yyyy",
+                      )}
                     </Text>
                     <Text className="text-gray-500 text-sm">
                       {summary.weekCount} weeks
@@ -149,12 +162,14 @@ export default function HomeScreen() {
               </Card>
             ))}
             {coachDashboard && coachDashboard.length === 0 && (
-              <Text className="text-gray-500 text-base">No athletes found.</Text>
+              <Text className="text-gray-500 text-base">
+                No athletes found.
+              </Text>
             )}
           </View>
         </View>
       </ScrollView>
-    )
+    );
   }
 
   return (
@@ -163,24 +178,24 @@ export default function HomeScreen() {
       contentContainerStyle={{ paddingBottom: 40 }}
       contentInsetAdjustmentBehavior="automatic"
     >
-      {Platform.OS === 'android' && <View className="h-20" />}
+      {Platform.OS === "android" && <View className="h-20" />}
       <View className="px-5 pt-4">
         <View className="flex-row items-start justify-between">
           <View>
-            <Header title="Atlas" subtitle={format(today, 'EEEE, MMMM d')} />
+            <Header title="Atlas" subtitle={format(today, "EEEE, MMMM d")} />
           </View>
           <View className="pt-1">
-            {Platform.OS === 'ios' ? (
+            {Platform.OS === "ios" ? (
               <LiquidGlassButton
                 icon="settings-outline"
                 iconSize={24}
                 height={44}
                 width={44}
                 iconColor="#6C6C70"
-                onPress={() => router.push('/settings')}
+                onPress={() => router.push("/settings")}
               />
             ) : (
-              <Pressable onPress={() => router.push('/settings')}>
+              <Pressable onPress={() => router.push("/settings")}>
                 <Ionicons name="settings-outline" size={24} color="#6C6C70" />
               </Pressable>
             )}
@@ -189,7 +204,7 @@ export default function HomeScreen() {
 
         {/* Meet Countdown */}
         <Animated.View entering={FadeInDown.delay(100).duration(500)}>
-          <Pressable onPress={() => router.push('/set-meet')}>
+          <Pressable onPress={() => router.push("/set-meet")}>
             <Card className="mt-6 bg-card-background">
               <Card.Body>
                 {nextMeet && daysUntilMeet !== null ? (
@@ -199,20 +214,25 @@ export default function HomeScreen() {
                     </Text>
                     <Text
                       className="text-blue-energy font-bold mt-2"
-                      style={{ fontSize: 64, fontVariant: ['tabular-nums'] }}
+                      style={{ fontSize: 64, fontVariant: ["tabular-nums"] }}
                     >
                       {daysUntilMeet}
                     </Text>
                     <Text className="text-text-title text-lg font-semibold -mt-1">
-                      {daysUntilMeet === 1 ? 'day' : 'days'} until competition
+                      {daysUntilMeet === 1 ? "day" : "days"} until competition
                     </Text>
                     <Text className="text-gray-500 text-sm mt-1">
-                      {format(new Date(nextMeet.meetDate + 'T00:00:00'), 'MMMM d, yyyy')}
+                      {format(
+                        new Date(nextMeet.meetDate + "T00:00:00"),
+                        "MMMM d, yyyy",
+                      )}
                     </Text>
                   </View>
                 ) : (
                   <View className="items-center py-6">
-                    <Text className="text-gray-500 text-lg">No meet scheduled</Text>
+                    <Text className="text-gray-500 text-lg">
+                      No meet scheduled
+                    </Text>
                     <Text className="text-blue-energy text-sm mt-2 font-medium">
                       Tap to set your next competition
                     </Text>
@@ -225,12 +245,12 @@ export default function HomeScreen() {
 
         {/* Today's Training Quick Look */}
         <Animated.View entering={FadeInDown.delay(200).duration(500)}>
-          <Pressable onPress={() => router.push('/training')}>
+          <Pressable onPress={() => router.push("/training")}>
             <Card className="mt-4 bg-card-background">
               <Card.Body>
                 <View className="flex-row justify-between items-center mb-3">
                   <Text className="text-text-title text-lg font-bold">
-                    Today Training
+                    Today's Training
                   </Text>
                   <Text className="text-blue-energy text-sm font-medium">
                     View
@@ -240,12 +260,16 @@ export default function HomeScreen() {
                 {todayTraining ? (
                   <View className="mt-3">
                     <Text className="text-gray-500 text-sm">
-                      Week {todayTraining.week.weekNumber} — Day{' '}
+                      Week {todayTraining.week.weekNumber} — Day{" "}
                       {todayTraining.day.dayNumber}
                     </Text>
                     <View className="mt-2" style={{ gap: 6 }}>
                       {todayTraining.day.exercises.slice(0, 4).map((ex) => (
-                        <View key={ex.exerciseNumber} className="flex-row items-center" style={{ gap: 8 }}>
+                        <View
+                          key={ex.exerciseNumber}
+                          className="flex-row items-center"
+                          style={{ gap: 8 }}
+                        >
                           <View
                             className="bg-blue-energy"
                             style={{
@@ -254,7 +278,10 @@ export default function HomeScreen() {
                               borderRadius: 3,
                             }}
                           />
-                          <Text className="text-text-title text-base" numberOfLines={1}>
+                          <Text
+                            className="text-text-title text-base"
+                            numberOfLines={1}
+                          >
                             {ex.exerciseName}
                           </Text>
                         </View>
@@ -266,7 +293,10 @@ export default function HomeScreen() {
                       )}
                     </View>
                     {todayTraining.day.completed && (
-                      <View className="mt-3 bg-green-900/20 rounded-lg py-2 px-3" style={{ borderCurve: 'continuous' }}>
+                      <View
+                        className="mt-3 bg-green-900/20 rounded-lg py-2 px-3"
+                        style={{ borderCurve: "continuous" }}
+                      >
                         <Text className="text-green-500 text-sm font-medium text-center">
                           Completed
                         </Text>
@@ -293,12 +323,12 @@ export default function HomeScreen() {
                 </Text>
                 <Text
                   className="text-text-title text-3xl font-bold mt-1"
-                  style={{ fontVariant: ['tabular-nums'] }}
+                  style={{ fontVariant: ["tabular-nums"] }}
                 >
                   {trainingStreak}
                 </Text>
                 <Text className="text-gray-500 text-sm">
-                  {trainingStreak === 1 ? 'session' : 'sessions'}
+                  {trainingStreak === 1 ? "session" : "sessions"}
                 </Text>
               </Card.Body>
             </Card>
@@ -309,12 +339,12 @@ export default function HomeScreen() {
                 </Text>
                 <Text
                   className="text-text-title text-3xl font-bold mt-1"
-                  style={{ fontVariant: ['tabular-nums'] }}
+                  style={{ fontVariant: ["tabular-nums"] }}
                 >
                   {totalCompleted}
                 </Text>
                 <Text className="text-gray-500 text-sm">
-                  {totalCompleted === 1 ? 'session' : 'sessions'}
+                  {totalCompleted === 1 ? "session" : "sessions"}
                 </Text>
               </Card.Body>
             </Card>
@@ -337,7 +367,8 @@ export default function HomeScreen() {
                     {program.weekCount} weeks
                   </Text>
                   <Text className="text-gray-500 text-sm">
-                    Started {format(new Date(program.startDate + 'T00:00:00'), 'MMM d')}
+                    Started{" "}
+                    {format(new Date(program.startDate + "T00:00:00"), "MMM d")}
                   </Text>
                 </View>
               </Card.Body>
@@ -346,7 +377,7 @@ export default function HomeScreen() {
         )}
       </View>
 
-      {Platform.OS === 'android' && <View style={{ height: 120 }} />}
+      {Platform.OS === "android" && <View style={{ height: 120 }} />}
     </ScrollView>
-  )
+  );
 }
